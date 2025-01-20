@@ -56,20 +56,21 @@ void configure_reversed_linked_list(void **head_ptr) {
  * Assumes the linked list is circular
  */
 void traverse_monitored_addresses(void **head_ptr) {
-    if (!head_ptr) {
-        printf("The linked list is empty.\n");
-        return;
+    for (int i = 0; i < 10; i++) {
+        if (!head_ptr) {
+            printf("The linked list is empty.\n");
+            return;
+        }
+        void *head = *head_ptr;
+        void *current = head;
+        do {
+            current = LNEXT(current);
+        } while (current && current != head); // Continue until we loop back to the head
+        current = *head_ptr;
+        do {
+            current = LNEXT(NEXTPTR(current));
+        }while (current && current != head); // Continue until we loop back to the head
     }
-    void *head = *head_ptr;
-    void *current = head;
-    do {
-        current = LNEXT(current);
-    } while (current && current != head); // Continue until we loop back to the head
-    current = *head_ptr;
-    do {
-        current = LNEXT(NEXTPTR(current));
-    }while (current && current != head); // Continue until we loop back to the head
-
 }
 
 
@@ -109,28 +110,21 @@ uint64_t get_time_to_traverse(void *head) {
  *         done NUM_OF_MESSAGE_SENDS times
  *         every round happens after a slot time (of cycles)
  */
-void correlated_prime(void* head, const uint8_t* message, int slot, uint64_t traverseTime) {
-    // FILE *file = fopen("message.txt", "w");
-    uint64_t prev_time = rdtscp64();
-    // printf("num of sets in sender: %d\n", l3_getSets(l3));
-    for (int i = 0; i < MESSAGE_SIZE; i++) {
-        if (message[i] == 1) {
-            traverse_monitored_addresses(head);
-        }
-        else {
-            slotwait(traverseTime); //wait for the time to traverse if there is no need to traverse
-        }
-        prev_time += slot;
-        slotwait(prev_time);
+void correlated_prime(void* head, const uint8_t bit, int slot, uint64_t traverseTime) {
+    if (bit == 1) {
+        traverse_monitored_addresses(head);
+    }
+    else {
+        slotwait(traverseTime); //wait for the time to traverse if there is no need to traverse
     }
 }
 
 void create_message(uint8_t *message) {
     for (int i = 0; i < MESSAGE_SIZE; i++) {
         if (i%2 == 0)
-            message[i] = 0;
-        else
             message[i] = 1;
+        else
+            message[i] = 0;
     }
 }
 

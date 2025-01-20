@@ -14,12 +14,6 @@ void prepare_receiver(l3pp_t *l3) {
         numOfSets = l3_getSets(*l3);
     }
 
-    // const int numOfSlices = l3_getSlices(*l3);
-    //
-    // monitor_sets(*l3, numOfSlices);
-    //
-    // printf("Num of sets of the RECEIVER: %d\n", numOfSets);
-    // printf("Num of slices of the RECEIVER: %d\n", numOfSlices);
 
 
     free(l3i);

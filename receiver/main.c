@@ -26,7 +26,7 @@
 #define SYNC_FILE_S "/tmp/sender_prepared"
 #define RECEIVER_LOG "/home/michael/CLionProjects/Michaels_PP/cmake-build-debug/PrimeProbe/receiver_log.log"
 #define SLOT INT_MAX
-#define PROBE_CYCLES 2600000000 // should be a second
+#define PROBE_CYCLES (2600000000/100000)  // should be a second
 
 void wait_for_sender_ready(const char *file) {
     printf("Receiver: Waiting for Sender to be ready...\n");
@@ -211,29 +211,30 @@ int main(int ac, char **av) {
     }
     fclose(file);
 
-    // delayloop(3000000000U);
-    // sleep(1);
 
     uint16_t *tempRes = (uint16_t*) calloc(1, sizeof(uint16_t));
-    find_most_silent_set(&l3); // --------------------notice--------------
+    // find_most_silent_set(&l3); // --------------------notice--------------
     printf("\n--------starting probe--------\n");
     wait_for_sender_ready(SYNC_FILE_S);
+    uint64_t end = 0;
     for (int slice = 0; slice < numOfSlices ; slice++) {
-        uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
+
         for (int j = 0; j < MESSAGE_SIZE; j++) {
             l3_unmonitorall(l3);
-            l3_monitor(l3, SET_INDEX);
+            l3_monitor(l3, SET_INDEX + slice * 1024);
+            while (rdtscp64() < end + PROBE_CYCLES) {if (j == 0&&slice==0) break;} //make the probe last for a second
+            uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
             // delayloop(1300000U);
             l3_probecount(l3, tempRes);
+            end = rdtscp64()/CLOCK_NORMALIZER;
             res[slice * MESSAGE_SIZE + j] = tempRes[0];
-        }
-        uint64_t end = rdtscp64()/CLOCK_NORMALIZER;
-        log_time(RECEIVER_LOG, "Probing start", start);
-        log_time(RECEIVER_LOG, "Probing end", end);
-        log_time(RECEIVER_LOG, "Probing took", end - start);
-        log_time(RECEIVER_LOG, "------------------------------------", 0);
 
-        while (rdtscp64() < start + PROBE_CYCLES) {} //make the probe last for a second
+            log_time(RECEIVER_LOG, "Probing start", start);
+            log_time(RECEIVER_LOG, "Probing end", end);
+            log_time(RECEIVER_LOG, "Probing took", end - start);
+            log_time(RECEIVER_LOG, "------------------------------------", 0);
+
+        }
     }
     // l3_repeatedprobecount(l3, MESSAGE_SIZE, res, INT_MAX);
     printf("--------probe ended--------\n\n");
@@ -249,7 +250,12 @@ int main(int ac, char **av) {
     restore_message(res, message, numOfSlices);
     stream_message_to_file(message, numOfSlices);
 
-
+    int cpu = sched_getcpu();
+    if (cpu == -1) {
+        perror("sched_getcpu");
+        return 1;
+    }
+    printf("RECRIVER!!!!!!! process is running on CPU core: %d\n", cpu);
 
     // unlink(SYNC_FILE_S);
     // unlink(SYNC_FILE_R);
