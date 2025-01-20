@@ -1,2 +1,4 @@
-probe time with max int slot: 8260 ms
-prime time with max int slot: 8260 ms
+bash commands:
+sudo sysctl -w vm.nr_hugepages=1024  --> create huge pages
+
+cat /proc/meminfo  --> memory info

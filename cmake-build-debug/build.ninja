@@ -111,21 +111,21 @@ build cmake_object_order_depends_target_receiver: phony || .
 build receiver/CMakeFiles/receiver.dir/main.c.o: C_COMPILER__receiver_unscanned_Debug /home/michael/CLionProjects/Michaels_PP/receiver/main.c || cmake_object_order_depends_target_receiver
   DEP_FILE = receiver/CMakeFiles/receiver.dir/main.c.o.d
   FLAGS = -g -fdiagnostics-color=always
-  INCLUDES = -I/home/michael/CLionProjects/CovertChannel/Mastik-main/mastik
+  INCLUDES = -I/home/michael/CLionProjects/Michaels_PP/Mastik-main/mastik
   OBJECT_DIR = receiver/CMakeFiles/receiver.dir
   OBJECT_FILE_DIR = receiver/CMakeFiles/receiver.dir
 
 build receiver/CMakeFiles/receiver.dir/training.c.o: C_COMPILER__receiver_unscanned_Debug /home/michael/CLionProjects/Michaels_PP/receiver/training.c || cmake_object_order_depends_target_receiver
   DEP_FILE = receiver/CMakeFiles/receiver.dir/training.c.o.d
   FLAGS = -g -fdiagnostics-color=always
-  INCLUDES = -I/home/michael/CLionProjects/CovertChannel/Mastik-main/mastik
+  INCLUDES = -I/home/michael/CLionProjects/Michaels_PP/Mastik-main/mastik
   OBJECT_DIR = receiver/CMakeFiles/receiver.dir
   OBJECT_FILE_DIR = receiver/CMakeFiles/receiver.dir
 
 build receiver/CMakeFiles/receiver.dir/prepare_receiver.c.o: C_COMPILER__receiver_unscanned_Debug /home/michael/CLionProjects/Michaels_PP/receiver/prepare_receiver.c || cmake_object_order_depends_target_receiver
   DEP_FILE = receiver/CMakeFiles/receiver.dir/prepare_receiver.c.o.d
   FLAGS = -g -fdiagnostics-color=always
-  INCLUDES = -I/home/michael/CLionProjects/CovertChannel/Mastik-main/mastik
+  INCLUDES = -I/home/michael/CLionProjects/Michaels_PP/Mastik-main/mastik
   OBJECT_DIR = receiver/CMakeFiles/receiver.dir
   OBJECT_FILE_DIR = receiver/CMakeFiles/receiver.dir
 
@@ -137,9 +137,9 @@ build receiver/CMakeFiles/receiver.dir/prepare_receiver.c.o: C_COMPILER__receive
 #############################################
 # Link the executable receiver/receiver
 
-build receiver/receiver: C_EXECUTABLE_LINKER__receiver_Debug receiver/CMakeFiles/receiver.dir/main.c.o receiver/CMakeFiles/receiver.dir/training.c.o receiver/CMakeFiles/receiver.dir/prepare_receiver.c.o | /home/michael/CLionProjects/CovertChannel/Mastik-main/src/libmastik.a
+build receiver/receiver: C_EXECUTABLE_LINKER__receiver_Debug receiver/CMakeFiles/receiver.dir/main.c.o receiver/CMakeFiles/receiver.dir/training.c.o receiver/CMakeFiles/receiver.dir/prepare_receiver.c.o | /home/michael/CLionProjects/Michaels_PP/Mastik-main/src/libmastik.a
   FLAGS = -g
-  LINK_LIBRARIES = /home/michael/CLionProjects/CovertChannel/Mastik-main/src/libmastik.a
+  LINK_LIBRARIES = /home/michael/CLionProjects/Michaels_PP/Mastik-main/src/libmastik.a
   OBJECT_DIR = receiver/CMakeFiles/receiver.dir
   POST_BUILD = :
   PRE_LINK = :
@@ -186,14 +186,14 @@ build cmake_object_order_depends_target_sender: phony || .
 build sender/CMakeFiles/sender.dir/main.c.o: C_COMPILER__sender_unscanned_Debug /home/michael/CLionProjects/Michaels_PP/sender/main.c || cmake_object_order_depends_target_sender
   DEP_FILE = sender/CMakeFiles/sender.dir/main.c.o.d
   FLAGS = -g -fdiagnostics-color=always
-  INCLUDES = -I/home/michael/CLionProjects/CovertChannel/Mastik-main/mastik
+  INCLUDES = -I/home/michael/CLionProjects/Michaels_PP/Mastik-main/mastik
   OBJECT_DIR = sender/CMakeFiles/sender.dir
   OBJECT_FILE_DIR = sender/CMakeFiles/sender.dir
 
 build sender/CMakeFiles/sender.dir/correlated_set.c.o: C_COMPILER__sender_unscanned_Debug /home/michael/CLionProjects/Michaels_PP/sender/correlated_set.c || cmake_object_order_depends_target_sender
   DEP_FILE = sender/CMakeFiles/sender.dir/correlated_set.c.o.d
   FLAGS = -g -fdiagnostics-color=always
-  INCLUDES = -I/home/michael/CLionProjects/CovertChannel/Mastik-main/mastik
+  INCLUDES = -I/home/michael/CLionProjects/Michaels_PP/Mastik-main/mastik
   OBJECT_DIR = sender/CMakeFiles/sender.dir
   OBJECT_FILE_DIR = sender/CMakeFiles/sender.dir
 
@@ -205,9 +205,9 @@ build sender/CMakeFiles/sender.dir/correlated_set.c.o: C_COMPILER__sender_unscan
 #############################################
 # Link the executable sender/sender
 
-build sender/sender: C_EXECUTABLE_LINKER__sender_Debug sender/CMakeFiles/sender.dir/main.c.o sender/CMakeFiles/sender.dir/correlated_set.c.o | /home/michael/CLionProjects/CovertChannel/Mastik-main/src/libmastik.a
+build sender/sender: C_EXECUTABLE_LINKER__sender_Debug sender/CMakeFiles/sender.dir/main.c.o sender/CMakeFiles/sender.dir/correlated_set.c.o | /home/michael/CLionProjects/Michaels_PP/Mastik-main/src/libmastik.a
   FLAGS = -g
-  LINK_LIBRARIES = /home/michael/CLionProjects/CovertChannel/Mastik-main/src/libmastik.a
+  LINK_LIBRARIES = /home/michael/CLionProjects/Michaels_PP/Mastik-main/src/libmastik.a
   OBJECT_DIR = sender/CMakeFiles/sender.dir
   POST_BUILD = :
   PRE_LINK = :

@@ -9,8 +9,8 @@
 #include <string.h>
 #define SYNC_FILE_R "/tmp/rceiver_prepared"
 #define SYNC_FILE_S "/tmp/sender_prepared"
-#define SENDER_LOG "/home/michael/CLionProjects/Michaels_PP/cmake-build-debug/PrimeProbe/sender_log.log"
-#define RECEIVER_LOG "/home/michael/CLionProjects/Michaels_PP/cmake-build-debug/PrimeProbe/receiver_log.log"
+#define SENDER_LOG "../../cmake-build-debug/PrimeProbe/sender_log.log"
+#define RECEIVER_LOG "../../cmake-build-debug/PrimeProbe/receiver_log.log"
 #define NUM_ROUNDS 12
 #define LOWER_CPU 10
 #define UPPER_CPU 11
@@ -97,8 +97,8 @@ void read_times(const char *filename, uint64_t *start, uint64_t *end) {
 int main() {
     pid_t receiver_pid, sender_pid;
     set_cpu_range(LOWER_CPU, UPPER_CPU);
-    char* senderPath = "/home/michael/CLionProjects/Michaels_PP/cmake-build-debug/sender/sender";
-    char* receiverPath = "/home/michael/CLionProjects/Michaels_PP/cmake-build-debug/receiver/receiver";
+    char* senderPath = "../../cmake-build-debug/sender/sender";
+    char* receiverPath = "../../cmake-build-debug/receiver/receiver";
 
 
 

@@ -12,7 +12,7 @@
 #define CLOCK_NORMALIZER 1
 #define SYNC_FILE_R "/tmp/rceiver_prepared"
 #define SYNC_FILE_S "/tmp/sender_prepared"
-#define SENDER_LOG "/home/michael/CLionProjects/Michaels_PP/cmake-build-debug/PrimeProbe/sender_log.log"
+#define SENDER_LOG "../../cmake-build-debug/PrimeProbe/sender_log.log"
 #define PRIME_CYCLES (2600000000/100000)   // should be a second
 
 void wait_for_receiver_ready(const char *file) {
@@ -97,11 +97,11 @@ int main(int argc, char *argv[]) {
 
     printf("----------------started priming----------------\n");
     signal_receiver_ready(SYNC_FILE_S);
-    slotwait(3000000000U);
+    // slotwait(3000000000U);
     uint64_t end = 0;
     for (int round = 0; round < 12; round++) {
         for (int i =0; i < MESSAGE_SIZE; i++) {
-            while (rdtscp64() < end + PRIME_CYCLES) {if (i == 0&&round==0) break;} //make the probe last for a second
+            // while (rdtscp64() < end + PRIME_CYCLES) {if (i == 0&&round==0) break;} //make the probe last for a second
 
             uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
             correlated_prime(monitoredHead, message[i],0, traverseTime);
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
             log_time(SENDER_LOG, "Priming end", end);
             log_time(SENDER_LOG, "Priming took", end - start);
             log_time(SENDER_LOG, "------------------------------------", 0);
-            // while (rdtscp64() < start + PRIME_CYCLES) {}
+            while (rdtscp64() < start + PRIME_CYCLES) {}
         }
     }
     printf("---------------- priming ended----------------\n");

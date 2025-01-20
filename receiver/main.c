@@ -24,7 +24,7 @@
 #define CLOCK_NORMALIZER 1
 #define SYNC_FILE_R "/tmp/rceiver_prepared"
 #define SYNC_FILE_S "/tmp/sender_prepared"
-#define RECEIVER_LOG "/home/michael/CLionProjects/Michaels_PP/cmake-build-debug/PrimeProbe/receiver_log.log"
+#define RECEIVER_LOG "../../cmake-build-debug/PrimeProbe/receiver_log.log"
 #define SLOT INT_MAX
 #define PROBE_CYCLES (2600000000/100000)  // should be a second
 
