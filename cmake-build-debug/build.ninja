@@ -243,6 +243,38 @@ build sender/rebuild_cache: phony sender/CMakeFiles/rebuild_cache.util
 # =============================================================================
 
 # =============================================================================
+# Object build statements for STATIC_LIBRARY target PrimeProbeLib
+
+
+#############################################
+# Order-only phony target for PrimeProbeLib
+
+build cmake_object_order_depends_target_PrimeProbeLib: phony || .
+
+build PrimeProbe/CMakeFiles/PrimeProbeLib.dir/shared.c.o: C_COMPILER__PrimeProbeLib_unscanned_Debug /home/michael/CLionProjects/Michaels_PP/PrimeProbe/shared.c || cmake_object_order_depends_target_PrimeProbeLib
+  DEP_FILE = PrimeProbe/CMakeFiles/PrimeProbeLib.dir/shared.c.o.d
+  FLAGS = -g -fdiagnostics-color=always
+  INCLUDES = -I/home/michael/CLionProjects/Michaels_PP/PrimeProbe
+  OBJECT_DIR = PrimeProbe/CMakeFiles/PrimeProbeLib.dir
+  OBJECT_FILE_DIR = PrimeProbe/CMakeFiles/PrimeProbeLib.dir
+
+
+# =============================================================================
+# Link build statements for STATIC_LIBRARY target PrimeProbeLib
+
+
+#############################################
+# Link the static library PrimeProbe/libPrimeProbeLib.a
+
+build PrimeProbe/libPrimeProbeLib.a: C_STATIC_LIBRARY_LINKER__PrimeProbeLib_Debug PrimeProbe/CMakeFiles/PrimeProbeLib.dir/shared.c.o
+  LANGUAGE_COMPILE_FLAGS = -g
+  OBJECT_DIR = PrimeProbe/CMakeFiles/PrimeProbeLib.dir
+  POST_BUILD = :
+  PRE_LINK = :
+  TARGET_FILE = PrimeProbe/libPrimeProbeLib.a
+  TARGET_PDB = PrimeProbeLib.a.dbg
+
+# =============================================================================
 # Object build statements for EXECUTABLE target PrimeProbe
 
 
@@ -301,6 +333,10 @@ build PrimeProbe/rebuild_cache: phony PrimeProbe/CMakeFiles/rebuild_cache.util
 
 build PrimeProbe: phony PrimeProbe/PrimeProbe
 
+build PrimeProbeLib: phony PrimeProbe/libPrimeProbeLib.a
+
+build libPrimeProbeLib.a: phony PrimeProbe/libPrimeProbeLib.a
+
 build receiver: phony receiver/receiver
 
 build sender: phony sender/sender
@@ -320,7 +356,7 @@ build all: phony Michaels_PP receiver/all sender/all PrimeProbe/all
 #############################################
 # Folder: /home/michael/CLionProjects/Michaels_PP/cmake-build-debug/PrimeProbe
 
-build PrimeProbe/all: phony PrimeProbe/PrimeProbe
+build PrimeProbe/all: phony PrimeProbe/libPrimeProbeLib.a PrimeProbe/PrimeProbe
 
 # =============================================================================
 

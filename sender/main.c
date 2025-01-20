@@ -6,11 +6,14 @@
 #include <mastik/impl.h>
 #include "correlated_set.h"
 #include <sched.h>
+#include "../PrimeProbe/shared.h"
 #define LOWER_CPU 4
 #define UPPER_CPU 4
-#define CLOCK_NORMALIZER 2600000
+#define CLOCK_NORMALIZER 1
 #define SYNC_FILE_R "/tmp/rceiver_prepared"
 #define SYNC_FILE_S "/tmp/sender_prepared"
+#define SENDER_LOG "/home/michael/CLionProjects/Michaels_PP/cmake-build-debug/PrimeProbe/sender_log.log"
+#define PRIME_CYCLES 2600000000// should be a second
 
 void wait_for_receiver_ready(const char *file) {
     printf("Sender: Waiting for receiver to be ready...\n");
@@ -58,6 +61,16 @@ void set_cpu_range(int start_cpu, int end_cpu) {
     }
 }
 
+void log_time(const char *filename, const char *event, uint64_t time) {
+    FILE *file = fopen(filename, "a");
+    if (!file) {
+        perror("Failed to open log file");
+        return;
+    }
+    fprintf(file, "%s %lu\n", event, time);
+    fclose(file);
+}
+
 
 
 int main(int argc, char *argv[]) {
@@ -68,6 +81,14 @@ int main(int argc, char *argv[]) {
 
     set_cpu_range(LOWER_CPU, UPPER_CPU);
 
+    FILE *file = fopen(SENDER_LOG, "w"); //empty log file
+    if (!file) {
+        perror("Failed to open log file");
+        return 1;
+    }
+    fclose(file);
+
+
     wait_for_receiver_ready(SYNC_FILE_R);
     prepare_sender(&l3, message);
     //end of sender preparation
@@ -75,14 +96,25 @@ int main(int argc, char *argv[]) {
     uint64_t traverseTime = get_time_to_traverse(monitoredHead);
     // printf("Time to traverse: %ld \n", traverseTime);
     delayloop(3000000000U);
+    // usleep(200000);
+
+    // sleep(1);
+    delayloop(300000000U);
+    delayloop(INT_MAX);
     printf("----------------started priming----------------\n");
     signal_receiver_ready(SYNC_FILE_S);
-    uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
-    correlated_prime(monitoredHead, message,INT_MAX, traverseTime);
-    uint64_t end = rdtscp64()/CLOCK_NORMALIZER;
+    for (int round = 0; round < 14; round++) {
+        uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
+        correlated_prime(monitoredHead, message,1, traverseTime);
+        uint64_t end = rdtscp64()/CLOCK_NORMALIZER;
+        log_time(SENDER_LOG, "Priming start", start);
+        log_time(SENDER_LOG, "Priming end", end);
+        log_time(SENDER_LOG, "Priming took", end - start);
+        log_time(SENDER_LOG, "------------------------------------", 0);
+        while (rdtscp64() < start + PRIME_CYCLES) {}
+    }
     printf("---------------- priming ended----------------\n");
 
-    printf("Prime started at: %lu\nPrime ended at: %lu\n\n", start, end);
 
     free(message);
     l3_release(l3);

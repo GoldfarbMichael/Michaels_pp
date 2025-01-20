@@ -12,6 +12,8 @@
 #include "prepare_receiver.h"
 #include "training.h"
 #include <limits.h>
+#include "../PrimeProbe/shared.h"
+
 #define REPS 10
 #define MESSAGE_SIZE 10
 #define OFFSET_MONITOREDHEAD 0
@@ -22,11 +24,14 @@
 #define CLOCK_NORMALIZER 1
 #define SYNC_FILE_R "/tmp/rceiver_prepared"
 #define SYNC_FILE_S "/tmp/sender_prepared"
+#define RECEIVER_LOG "/home/michael/CLionProjects/Michaels_PP/cmake-build-debug/PrimeProbe/receiver_log.log"
+#define SLOT INT_MAX
+#define PROBE_CYCLES 2600000000 // should be a second
 
 void wait_for_sender_ready(const char *file) {
     printf("Receiver: Waiting for Sender to be ready...\n");
     while (access(file, F_OK) == -1) {
-        usleep(1000); // Check every
+        usleep(10); // Check every
     }
     printf("Receiver: Sender is ready. Proceeding...\n");
 }
@@ -164,10 +169,19 @@ void set_cpu_range(int start_cpu, int end_cpu) {
 }
 
 
+void log_time(const char *filename, const char *event, uint64_t time) {
+    FILE *file = fopen(filename, "a");
+    if (!file) {
+        perror("Failed to open log file");
+        return;
+    }
+    fprintf(file, "%s %lu\n", event, time);
+    fclose(file);
+}
+
+
 
 int main(int ac, char **av) {
-
-
 
     //start of preparation
     l3pp_t l3;
@@ -187,24 +201,45 @@ int main(int ac, char **av) {
     // uint64_t tProbeBefore = get_probe_time(l3,res);
     // printf("\nTime to probe beforee: %ld \n", tProbeBefore);
 
+    FILE *file = fopen(RECEIVER_LOG, "w"); //empty log file
+    if (!file) {
+        perror("Failed to open log file");
+        l3_unmonitorall(l3);
+        l3_release(l3);
+        free(res);
+        return 1;
+    }
+    fclose(file);
 
+    // delayloop(3000000000U);
+    // sleep(1);
 
-    delayloop(3000000000U);
-    printf("\n--------starting probe--------\n");
-    delayloop(3000000000U);
-
-    // l3_probecount(l3, res); //one probecount because the first one anyway will be all misses
+    uint16_t *tempRes = (uint16_t*) calloc(1, sizeof(uint16_t));
     find_most_silent_set(&l3); // --------------------notice--------------
-
+    printf("\n--------starting probe--------\n");
     wait_for_sender_ready(SYNC_FILE_S);
+    for (int slice = 0; slice < numOfSlices ; slice++) {
+        uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
+        for (int j = 0; j < MESSAGE_SIZE; j++) {
+            l3_unmonitorall(l3);
+            l3_monitor(l3, SET_INDEX);
+            // delayloop(1300000U);
+            l3_probecount(l3, tempRes);
+            res[slice * MESSAGE_SIZE + j] = tempRes[0];
+        }
+        uint64_t end = rdtscp64()/CLOCK_NORMALIZER;
+        log_time(RECEIVER_LOG, "Probing start", start);
+        log_time(RECEIVER_LOG, "Probing end", end);
+        log_time(RECEIVER_LOG, "Probing took", end - start);
+        log_time(RECEIVER_LOG, "------------------------------------", 0);
 
-    uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
-    l3_repeatedprobecount(l3, MESSAGE_SIZE, res, INT_MAX);
-    uint64_t end = rdtscp64()/CLOCK_NORMALIZER;
+        while (rdtscp64() < start + PROBE_CYCLES) {} //make the probe last for a second
+    }
+    // l3_repeatedprobecount(l3, MESSAGE_SIZE, res, INT_MAX);
     printf("--------probe ended--------\n\n");
-    printf("Probe started at: %lu\nProbe ended at: %lu\n\n", start, end);
 
 
+    // log_time(RECEIVER_LOG, "Probing took", end - start);
     print_res(res, numOfSlices);
     // uint64_t tProbeAfter = get_probe_time(l3,res);
     // printf("\nTime to probe after: %ld \n", tProbeAfter);
@@ -222,6 +257,7 @@ int main(int ac, char **av) {
     l3_release(l3);
     free(res);
     free(message);
+    free(tempRes);
 
 
 

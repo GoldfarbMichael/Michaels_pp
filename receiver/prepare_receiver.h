@@ -9,7 +9,7 @@
 #include <mastik/impl.h>
 #include <mastik/util.h>
 
-#define SET_INDEX 0
+#define SET_INDEX 6
 #define REPS 10
 #define MESSAGE_SIZE 10
 

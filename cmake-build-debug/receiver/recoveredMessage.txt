@@ -1,5 +1,5 @@
 Slice number: 0
-0111111111
+0000000000
 Slice number: 1
 0000000000
 Slice number: 2

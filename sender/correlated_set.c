@@ -128,7 +128,7 @@ void correlated_prime(void* head, const uint8_t* message, int slot, uint64_t tra
 void create_message(uint8_t *message) {
     for (int i = 0; i < MESSAGE_SIZE; i++) {
         if (i%2 == 0)
-            message[i] = 1;
+            message[i] = 0;
         else
             message[i] = 1;
     }
@@ -147,10 +147,10 @@ void prepare_sender(l3pp_t* l3, uint8_t* message) {
     create_message(message);
     printf("Finished mapping and Message has been created\n");
     l3_unmonitorall(*l3);
-    l3_monitor(*l3, 1);
+    l3_monitor(*l3, SET_INDEX);
 
 
-    configure_reversed_linked_list(getHead(*l3, SET_INDEX));
+    configure_reversed_linked_list(getHead(*l3, 0));
     printf("Reversed Linked list has been configured\n");
 
     //stream the message into a txt file
