@@ -73,7 +73,23 @@ void traverse_monitored_addresses(void **head_ptr) {
 
 }
 
+void monitor_all_sets(l3pp_t* l3) {
+    l3_unmonitorall(*l3);
+    int nmonitored = l3_getSets(*l3);
+    for (int i = 0; i < nmonitored; i++) {
+        l3_monitor(*l3, i);
+    }
+}
 
+void prime_all_sets(l3pp_t* l3, uint8_t bit) {
+    int nmonitored = l3_getSets(*l3);
+
+    uint16_t* res = (uint16_t*) calloc(nmonitored, sizeof(uint16_t));
+    if (bit == 1) {
+        l3_probe(*l3, res);
+    }
+    free(res);
+}
 
 void steam_message_to_file(const uint8_t *message, FILE *file) {
 

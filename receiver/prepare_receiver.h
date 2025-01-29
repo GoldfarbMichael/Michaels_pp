@@ -11,7 +11,7 @@
 
 #define SET_INDEX 6
 #define REPS 10
-#define MESSAGE_SIZE 10
+#define MESSAGE_SIZE 20
 
 void prepare_receiver(l3pp_t *l3);
 

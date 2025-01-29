@@ -10,18 +10,15 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>    // For O_CREAT
-#define SYNC_FILE_R "/tmp/rceiver_prepared"
-#define SYNC_FILE_S "/tmp/sender_prepared"
 #define SENDER_LOG "../../cmake-build-debug/PrimeProbe/sender_log.log"
 #define RECEIVER_LOG "../../cmake-build-debug/PrimeProbe/receiver_log.log"
-#define NUM_ROUNDS 12
+#define MESSAGE_SIZE 20
 #define LOWER_CPU 10
 #define UPPER_CPU 11
 #define SEM_TURN_SENDER "/sem_turn_sender"
 #define SEM_TURN_RECEIVER "/sem_turn_receiver"
 #define SEM_MAPPING "/sem_mapping"
 
-// #define SEM_DONE "/sem_done"    // Receiver → Sender (Cycle complete)
 
 
 void set_cpu_range(int start_cpu, int end_cpu) {
@@ -46,7 +43,7 @@ typedef struct {
 } LogData;
 
 
-int parse_log_file(const char *file_path, LogData log_data[NUM_ROUNDS]) {
+int parse_log_file(const char *file_path, LogData log_data[MESSAGE_SIZE]) {
     FILE *log_file = fopen(file_path, "r");
     if (!log_file) {
         perror("Failed to open log file");
@@ -57,8 +54,8 @@ int parse_log_file(const char *file_path, LogData log_data[NUM_ROUNDS]) {
     int round = 0;
 
     while (fgets(line, sizeof(line), log_file)) {
-        if (round >= NUM_ROUNDS) {
-            fprintf(stderr, "Warning: More rounds in the file than expected (%d)\n", NUM_ROUNDS);
+        if (round >= MESSAGE_SIZE) {
+            fprintf(stderr, "Warning: More rounds in the file than expected (%d)\n", MESSAGE_SIZE);
             break;
         }
 
@@ -119,9 +116,10 @@ int main() {
     char* receiverPath = "../../cmake-build-debug/receiver/receiver";
 
 
-    sem_t *sem_turn_receiver, *sem_turn_sender;
+    sem_t *sem_turn_receiver, *sem_turn_sender, *sem_mapping;
 
     // Initialize named semaphores
+    initialize_semaphore(&sem_mapping, SEM_MAPPING, 1);
     initialize_semaphore(&sem_turn_sender, SEM_TURN_SENDER, 1);
     initialize_semaphore(&sem_turn_receiver, SEM_TURN_RECEIVER, 0); // Receiver must wait
 
@@ -180,14 +178,14 @@ int main() {
     sem_unlink(SEM_TURN_SENDER);
 
 
-    LogData sender_data[NUM_ROUNDS];
-    LogData receiver_data[NUM_ROUNDS];
+    LogData sender_data[MESSAGE_SIZE];
+    LogData receiver_data[MESSAGE_SIZE];
 
     parse_log_file(SENDER_LOG, sender_data);
     parse_log_file(RECEIVER_LOG, receiver_data);
 
     // Print the times and the distance between the starts
-    for (int i = 0; i < NUM_ROUNDS; i++) {
+    for (int i = 0; i < MESSAGE_SIZE; i++) {
         printf("----------------ROUND %d----------------\n", i+1);
         printf("Sender start: %lu\nSender end: %lu\nSender took: %lu\n\n", sender_data[i].start, sender_data[i].end, sender_data[i].took);
         printf("Receiver start: %lu\nReceiver end: %lu\nReceiver took: %lu\n\n", receiver_data[i].start, receiver_data[i].end, receiver_data[i].took);
@@ -202,11 +200,5 @@ int main() {
 
     }
 
-
-    // Cleanup the sync file
-    unlink(SYNC_FILE_S);
-    unlink(SYNC_FILE_R);
-
-    printf("Sync file cleaned up.\n");
     return 0;
 }

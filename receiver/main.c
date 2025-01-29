@@ -20,43 +20,19 @@
 
 
 #define REPS 10
-#define MESSAGE_SIZE 10
 #define OFFSET_MONITOREDHEAD 0
 #define OFFSET_NMONITORED 8
 #define MISS_THRESHOLD 8
 #define LOWER_CPU 0
 #define UPPER_CPU 0
 #define CLOCK_NORMALIZER 1
-#define SYNC_FILE_R "/tmp/rceiver_prepared"
-#define SYNC_FILE_S "/tmp/sender_prepared"
 #define RECEIVER_LOG "../../cmake-build-debug/PrimeProbe/receiver_log.log"
 #define SLOT INT_MAX
 #define PROBE_CYCLES (2600000000/10000)  // should be a second
 
-
-// #define SEM_DONE "/sem_done"
 #define SEM_TURN_SENDER "/sem_turn_sender"
 #define SEM_TURN_RECEIVER "/sem_turn_receiver"
-
-void wait_for_sender_ready(const char *file) {
-    printf("Receiver: Waiting for Sender to be ready...\n");
-    while (access(file, F_OK) == -1) {
-        usleep(1); // Check every
-    }
-    printf("Receiver: Sender is ready. Proceeding...\n");
-}
-
-
-void signal_sender_ready(const char *file) {
-    printf("Receiver: Signaling sender readiness...\n");
-    FILE *sync_file = fopen(file, "w");
-    if (sync_file == NULL) {
-        perror("Failed to create sync file");
-        exit(EXIT_FAILURE);
-    }
-    fclose(sync_file);
-    printf("Receiver: Sender has been signaled.\n");
-}
+#define SEM_MAPPING "/sem_mapping"
 
 int countBitDifferences(const char *file1, const char *file2) {
     FILE *fp1 = fopen(file1, "r");
@@ -189,14 +165,22 @@ void log_time(const char *filename, const char *event, uint64_t time) {
     fclose(file);
 }
 
+void evict_monitor_and_evict_sets(l3pp_t l3, int numOfSlices) {
+    uint16_t* res = (uint16_t*) calloc(numOfSlices * MESSAGE_SIZE, sizeof(uint16_t));
+    for (int i = 0; i < numOfSlices; i++) {
+        l3_monitor(l3, SET_INDEX + i * 1024);
+    }
+    l3_repeatedprobe(l3, 20, res, 1);
+    free(res);
+}
 
 
 int main(int ac, char **av) {
 
-
+    sem_t *sem_mapping = sem_open(SEM_MAPPING, O_RDWR);
     sem_t *sem_turn_receiver = sem_open(SEM_TURN_RECEIVER, O_RDWR);
-    sem_t *sem_turn_sender = sem_open(SEM_TURN_RECEIVER, O_RDWR);
-    if (sem_turn_sender == SEM_FAILED || sem_turn_receiver == SEM_FAILED) {
+    sem_t *sem_turn_sender = sem_open(SEM_TURN_SENDER, O_RDWR);
+    if (sem_turn_sender == SEM_FAILED || sem_turn_receiver == SEM_FAILED || sem_mapping == SEM_FAILED) {
         perror("sem_open failed");
         exit(1);
     }
@@ -205,19 +189,23 @@ int main(int ac, char **av) {
     l3pp_t l3;
     set_cpu_range(LOWER_CPU, UPPER_CPU);
 
+    //***** lock the mapping *****
+    printf("Receiver waiting for mapping...\n");
+    sem_wait(sem_mapping);
+    printf("Receiver mapping\n");
+
     prepare_receiver(&l3);
+
+    printf("Receiver exiting  mapping...\n");
+    sem_post(sem_mapping);
+    //***** unlock the mapping *****
+
     const int numOfSlices = l3_getSlices(l3);
-    signal_sender_ready(SYNC_FILE_R);
-
-
     uint16_t* res = (uint16_t*) calloc(MESSAGE_SIZE * numOfSlices, sizeof(uint16_t));
     for (int i = 0; i < MESSAGE_SIZE  * numOfSlices; i+= 2048/sizeof(uint16_t)) {
         res[i] = 1;
     }
     //end of preparation
-
-    // uint64_t tProbeBefore = get_probe_time(l3,res);
-    // printf("\nTime to probe beforee: %ld \n", tProbeBefore);
 
     FILE *file = fopen(RECEIVER_LOG, "w"); //empty log file
     if (!file) {
@@ -228,30 +216,24 @@ int main(int ac, char **av) {
         return 1;
     }
     fclose(file);
-
-    l3_unmonitorall(l3);
-    for (int i = 0; i < numOfSlices; i++) {
-        l3_monitor(l3, SET_INDEX + i * 1024);
-    }
+    //
+    // l3_unmonitorall(l3);
+    // for (int i = 0; i < numOfSlices; i++) {
+    //     l3_monitor(l3, SET_INDEX + i * 1024);
+    // }
 
     uint16_t *tempRes = (uint16_t*) calloc(numOfSlices, sizeof(uint16_t));
     printf("\n--------starting probe--------\n");
     uint64_t end = 0;
-    wait_for_sender_ready(SYNC_FILE_S);
-
-    find_most_silent_set(&l3); // --------------------notice--------------
+    evict_monitor_and_evict_sets(l3, numOfSlices); // cleans the cache
+    l3_probecount(l3, tempRes);
 
     for (int j = 0; j < MESSAGE_SIZE; j++) {
-
-        // l3_unmonitorall(l3);
-        // for (int i = 0; i < numOfSlices; i++) {
-        //     l3_monitor(l3, SET_INDEX + i * 1024);
-        // }
-
         sem_wait(sem_turn_receiver);
         uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
         l3_probecount(l3, tempRes);
         end = rdtscp64()/CLOCK_NORMALIZER;
+
         sem_post(sem_turn_sender);
         for (int slice = 0; slice < numOfSlices; slice++)
             res[slice * MESSAGE_SIZE + j] = tempRes[slice];
@@ -262,41 +244,22 @@ int main(int ac, char **av) {
         log_time(RECEIVER_LOG, "------------------------------------", 0);
 
 
-        while (rdtscp64() < start + PROBE_CYCLES) {} //make the probe last for a second
+        // while (rdtscp64() < start + PROBE_CYCLES) {} //make the probe last for a second
 
     }
 
-    // l3_repeatedprobecount(l3, MESSAGE_SIZE, res, INT_MAX);
     printf("--------probe ended--------\n\n");
-
-
-    // log_time(RECEIVER_LOG, "Probing took", end - start);
     print_res(res, numOfSlices);
-    // uint64_t tProbeAfter = get_probe_time(l3,res);
-    // printf("\nTime to probe after: %ld \n", tProbeAfter);
-
 
     uint16_t *message = (uint16_t*) calloc(MESSAGE_SIZE * numOfSlices, sizeof(uint16_t));
     restore_message(res, message, numOfSlices);
     stream_message_to_file(message, numOfSlices);
 
-    // int cpu = sched_getcpu();
-    // if (cpu == -1) {
-    //     perror("sched_getcpu");
-    //     return 1;
-    // }
-    // printf("RECRIVER!!!!!!! process is running on CPU core: %d\n", cpu);
-
-    // unlink(SYNC_FILE_S);
-    // unlink(SYNC_FILE_R);
     l3_unmonitorall(l3);
     l3_release(l3);
     free(res);
     free(message);
     free(tempRes);
-
-
-
 
     return 0;
 }

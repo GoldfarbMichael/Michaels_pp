@@ -14,39 +14,17 @@
 #define LOWER_CPU 4
 #define UPPER_CPU 4
 #define CLOCK_NORMALIZER 1
-#define SYNC_FILE_R "/tmp/rceiver_prepared"
-#define SYNC_FILE_S "/tmp/sender_prepared"
 #define SENDER_LOG "../../cmake-build-debug/PrimeProbe/sender_log.log"
 #define PRIME_CYCLES (2600000000/10000)   // should be a second
 
-
-// #define SEM_DONE "/sem_done"
 #define SEM_TURN_SENDER "/sem_turn_sender"
 #define SEM_TURN_RECEIVER "/sem_turn_receiver"
+#define SEM_MAPPING "/sem_mapping"
 
-void wait_for_receiver_ready(const char *file) {
-    printf("Sender: Waiting for receiver to be ready...\n");
-    while (access(file, F_OK) == -1) {
-        usleep(1000); // Check every
-    }
-    printf("Sender: Receiver is ready. Proceeding...\n");
-}
-
-void signal_receiver_ready(const char *file) {
-    printf("Sender: Signaling Receiver readiness...\n");
-    FILE *sync_file = fopen(file, "w");
-    if (sync_file == NULL) {
-        perror("Failed to create sync file");
-        exit(EXIT_FAILURE);
-    }
-    fclose(sync_file);
-    printf("Sender: Receiver has been signaled.\n");
-}
 
 void openLink(char* url) {
     char command[2048];
     snprintf(command, sizeof(command), "taskset -c 0 firefox %s &", url);
-    // Execute the command
     int result = system(command);
 
     // Check if the command was executed successfully
@@ -83,11 +61,10 @@ void log_time(const char *filename, const char *event, uint64_t time) {
 
 
 int main(int argc, char *argv[]) {
-
+    sem_t *sem_mapping = sem_open(SEM_MAPPING, O_RDWR);
     sem_t *sem_turn_receiver = sem_open(SEM_TURN_RECEIVER, O_RDWR);
-    sem_t *sem_turn_sender = sem_open(SEM_TURN_RECEIVER, O_RDWR);
-    if (sem_turn_sender == SEM_FAILED || sem_turn_receiver == SEM_FAILED) {
-
+    sem_t *sem_turn_sender = sem_open(SEM_TURN_SENDER, O_RDWR);
+    if (sem_turn_sender == SEM_FAILED || sem_turn_receiver == SEM_FAILED || sem_mapping == SEM_FAILED) {
         perror("sem_open failed");
         exit(1);
     }
@@ -105,41 +82,43 @@ int main(int argc, char *argv[]) {
     }
     fclose(file);
 
+    //***** lock the mapping *****
+    printf("sender waiting for mapping...\n");
+    sem_wait(sem_mapping);
+    printf("sender mapping\n");
 
-    wait_for_receiver_ready(SYNC_FILE_R);
     prepare_sender(&l3, message);
-    //end of sender preparation
+
+    monitor_all_sets(&l3);
+    printf("sender exiting mapping...\n");
+    sem_post(sem_mapping);
+    //***** unlock the mapping *****
     void* monitoredHead = getHead(l3, 0);
     uint64_t traverseTime = get_time_to_traverse(monitoredHead);
 
     printf("----------------started priming----------------\n");
-    signal_receiver_ready(SYNC_FILE_S);
-
     for (int round = 0; round < 1; round++) {
         for (int i =0; i < MESSAGE_SIZE; i++) {
-
-            sem_wait(sem_turn_sender); // wait for the next cycle
-            printf("Sender: Starting prime for message[%d] = \n", i);
+            //***** wait for the next cycle ******
+            sem_wait(sem_turn_sender);
             uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
-            correlated_prime(monitoredHead, message[i],0, traverseTime); // PRIMING
+
+            prime_all_sets(&l3, message[i]);
+            // correlated_prime(monitoredHead, message[i],0, traverseTime); // PRIMING
+
             uint64_t end = rdtscp64()/CLOCK_NORMALIZER;
-            sem_post(sem_turn_receiver); // signal end of prime
+            sem_post(sem_turn_receiver);
+            //***** signal end of prime *****
 
             log_time(SENDER_LOG, "Priming start", start);
             log_time(SENDER_LOG, "Priming end", end);
             log_time(SENDER_LOG, "Priming took", end - start);
             log_time(SENDER_LOG, "------------------------------------", 0);
-            while (rdtscp64() < start + PRIME_CYCLES) {}
+            // while (rdtscp64() < start + PRIME_CYCLES) {}
         }
     }
     printf("---------------- priming ended----------------\n");
 
-    // int cpu = sched_getcpu();
-    // if (cpu == -1) {
-    //     perror("sched_getcpu");
-    //     return 1;
-    // }
-    // printf("SENDER!!!!!!! process is running on CPU core: %d\n", cpu);
     free(message);
     l3_release(l3);
     return EXIT_SUCCESS;
