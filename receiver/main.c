@@ -225,24 +225,31 @@ int main(int ac, char **av) {
     uint16_t *tempRes = (uint16_t*) calloc(numOfSlices, sizeof(uint16_t));
     printf("\n--------starting probe--------\n");
     uint64_t end = 0;
-    evict_monitor_and_evict_sets(l3, numOfSlices); // cleans the cache
-    l3_probecount(l3, tempRes);
+    // evict_monitor_and_evict_sets(l3, numOfSlices); // cleans the cache
+    // l3_probecount(l3, tempRes);
 
     for (int j = 0; j < MESSAGE_SIZE; j++) {
-        sem_wait(sem_turn_receiver);
-        uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
-        l3_probecount(l3, tempRes);
-        end = rdtscp64()/CLOCK_NORMALIZER;
+        for (int slice = 0; slice < numOfSlices; slice++) {
+            l3_unmonitorall(l3);
+            l3_monitor(l3, SET_INDEX + slice * 1024);
 
-        sem_post(sem_turn_sender);
-        for (int slice = 0; slice < numOfSlices; slice++)
-            res[slice * MESSAGE_SIZE + j] = tempRes[slice];
+            //***** wait for sender to end prime ******
+            // printf("Receiver waiting for probe");
+            sem_wait(sem_turn_receiver);
+            uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
+            l3_probecount(l3, tempRes);
+            end = rdtscp64()/CLOCK_NORMALIZER;
 
-        log_time(RECEIVER_LOG, "Probing start", start);
-        log_time(RECEIVER_LOG, "Probing end", end);
-        log_time(RECEIVER_LOG, "Probing took", end - start);
-        log_time(RECEIVER_LOG, "------------------------------------", 0);
+            sem_post(sem_turn_sender);
+            //***** signal end of probe *****
 
+            res[slice * MESSAGE_SIZE + j] = tempRes[0];
+
+            // log_time(RECEIVER_LOG, "Probing start", start);
+            // log_time(RECEIVER_LOG, "Probing end", end);
+            // log_time(RECEIVER_LOG, "Probing took", end - start);
+            // log_time(RECEIVER_LOG, "------------------------------------", 0);
+        }
 
         // while (rdtscp64() < start + PROBE_CYCLES) {} //make the probe last for a second
 

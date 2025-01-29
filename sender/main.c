@@ -88,18 +88,21 @@ int main(int argc, char *argv[]) {
     printf("sender mapping\n");
 
     prepare_sender(&l3, message);
+    void* monitoredHead = getHead(l3, 0);
 
-    monitor_all_sets(&l3);
+    monitor_all_sets(&l3); // ****************** Necessary for priming all sets ************
     printf("sender exiting mapping...\n");
+
+    // uint64_t traverseTime = get_time_to_traverse(monitoredHead);
     sem_post(sem_mapping);
     //***** unlock the mapping *****
-    void* monitoredHead = getHead(l3, 0);
-    uint64_t traverseTime = get_time_to_traverse(monitoredHead);
+
 
     printf("----------------started priming----------------\n");
-    for (int round = 0; round < 1; round++) {
-        for (int i =0; i < MESSAGE_SIZE; i++) {
-            //***** wait for the next cycle ******
+    for (int i =0; i < MESSAGE_SIZE; i++) {
+        for (int round = 0; round < 12; round++) { //12 slices
+
+            //***** wait for receiver to end probe ******
             sem_wait(sem_turn_sender);
             uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
 
@@ -109,12 +112,12 @@ int main(int argc, char *argv[]) {
             uint64_t end = rdtscp64()/CLOCK_NORMALIZER;
             sem_post(sem_turn_receiver);
             //***** signal end of prime *****
-
-            log_time(SENDER_LOG, "Priming start", start);
-            log_time(SENDER_LOG, "Priming end", end);
-            log_time(SENDER_LOG, "Priming took", end - start);
-            log_time(SENDER_LOG, "------------------------------------", 0);
-            // while (rdtscp64() < start + PRIME_CYCLES) {}
+            //
+            // log_time(SENDER_LOG, "Priming start", start);
+            // log_time(SENDER_LOG, "Priming end", end);
+            // log_time(SENDER_LOG, "Priming took", end - start);
+            // log_time(SENDER_LOG, "------------------------------------", 0);
+            // // while (rdtscp64() < start + PRIME_CYCLES) {}
         }
     }
     printf("---------------- priming ended----------------\n");
