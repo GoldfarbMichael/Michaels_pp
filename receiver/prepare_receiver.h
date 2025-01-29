@@ -9,9 +9,9 @@
 #include <mastik/impl.h>
 #include <mastik/util.h>
 
-#define SET_INDEX 6
+#define SET_INDEX 10
 #define REPS 10
-#define MESSAGE_SIZE 20
+#define MESSAGE_SIZE 50
 
 void prepare_receiver(l3pp_t *l3);
 

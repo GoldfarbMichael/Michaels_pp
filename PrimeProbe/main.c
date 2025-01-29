@@ -185,20 +185,20 @@ int main() {
     parse_log_file(RECEIVER_LOG, receiver_data);
 
     // Print the times and the distance between the starts
-    for (int i = 0; i < MESSAGE_SIZE; i++) {
-        printf("----------------ROUND %d----------------\n", i+1);
-        printf("Sender start: %lu\nSender end: %lu\nSender took: %lu\n\n", sender_data[i].start, sender_data[i].end, sender_data[i].took);
-        printf("Receiver start: %lu\nReceiver end: %lu\nReceiver took: %lu\n\n", receiver_data[i].start, receiver_data[i].end, receiver_data[i].took);
-        printf("----Distances (sender - receiver)----\nDistance between starts: %ld \n", sender_data[i].start - receiver_data[i].start);
-        printf("Distance between ends: %ld \n", sender_data[i].end- receiver_data[i].end);
-        printf("Took distance: %ld \n", sender_data[i].took- receiver_data[i].took);
-        printf("(SenderEnd - ReceiverStart): %ld \n", sender_data[i].end - receiver_data[i].start);
-        if (i > 0) {
-            printf("(ReceiverEndPrev - SenderStartCurr): %ld \n", receiver_data[i-1].end - sender_data[i].start);
-        }
-
-
-    }
+    // for (int i = 0; i < MESSAGE_SIZE; i++) {
+    //     printf("----------------ROUND %d----------------\n", i+1);
+    //     printf("Sender start: %lu\nSender end: %lu\nSender took: %lu\n\n", sender_data[i].start, sender_data[i].end, sender_data[i].took);
+    //     printf("Receiver start: %lu\nReceiver end: %lu\nReceiver took: %lu\n\n", receiver_data[i].start, receiver_data[i].end, receiver_data[i].took);
+    //     printf("----Distances (sender - receiver)----\nDistance between starts: %ld \n", sender_data[i].start - receiver_data[i].start);
+    //     printf("Distance between ends: %ld \n", sender_data[i].end- receiver_data[i].end);
+    //     printf("Took distance: %ld \n", sender_data[i].took- receiver_data[i].took);
+    //     printf("(SenderEnd - ReceiverStart): %ld \n", sender_data[i].end - receiver_data[i].start);
+    //     if (i > 0) {
+    //         printf("(ReceiverEndPrev - SenderStartCurr): %ld \n", receiver_data[i-1].end - sender_data[i].start);
+    //     }
+    //
+    //
+    // }
 
     return 0;
 }

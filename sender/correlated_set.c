@@ -76,7 +76,7 @@ void traverse_monitored_addresses(void **head_ptr) {
 void monitor_all_sets(l3pp_t* l3) {
     l3_unmonitorall(*l3);
     int nmonitored = l3_getSets(*l3);
-    for (int i = 0; i < nmonitored; i++) {
+    for (int i = 0; i < 1024; i++) {
         l3_monitor(*l3, i);
     }
 }

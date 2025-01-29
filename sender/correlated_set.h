@@ -8,7 +8,7 @@
 #include <mastik/util.h>
 
 
-#define MESSAGE_SIZE 20
+#define MESSAGE_SIZE 50
 #define SET_INDEX 6
 #define OFFSET_MONITOREDHEAD 0
 #define OFFSET_NMONITORED 8
