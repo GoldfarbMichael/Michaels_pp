@@ -1,8 +1,7 @@
 
-#include <stdio.h>
 #include <stdlib.h>
 #include "training.h"
-
+#include "prepare_receiver.h"
 #define NUM_OF_TESTS 20
 #define SLOT 1
 
@@ -36,7 +35,7 @@ void find_most_silent_set(l3pp_t* l3) {
     uint16_t* avgRes = (uint16_t*) calloc(setsInSlice, sizeof(uint16_t));
     uint16_t* res = (uint16_t*) calloc(NUM_OF_TESTS, sizeof(uint16_t));
 
-    for (int i = 0; i < NUM_OF_TESTS; i+= 1024/sizeof(uint16_t)) {
+    for (int i = 0; i < NUM_OF_TESTS; i+= NUM_OF_SETS_IN_SLICE/sizeof(uint16_t)) {
         res[i] = 1;
     }
 

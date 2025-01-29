@@ -76,7 +76,7 @@ void traverse_monitored_addresses(void **head_ptr) {
 void monitor_all_sets(l3pp_t* l3) {
     l3_unmonitorall(*l3);
     int nmonitored = l3_getSets(*l3);
-    for (int i = 0; i < 1024; i++) {
+    for (int i = 0; i < NUM_OF_SETS_IN_SLICE; i++) {
         l3_monitor(*l3, i);
     }
 }
@@ -107,7 +107,7 @@ void create_monitored_set_array(l3pp_t l3, int numOfSlices) {
     int j = 0;
     for (int slice = 0; slice < numOfSlices; slice++) {
         for (int i = 0; i < MESSAGE_SIZE; i++) {
-            l3_monitor(l3, 1024 * slice + i); //monitor relevant sets at each slice
+            l3_monitor(l3, NUM_OF_SETS_IN_SLICE * slice + i); //monitor relevant sets at each slice
         }
     }
 }
@@ -149,7 +149,7 @@ void prepare_sender(l3pp_t* l3, uint8_t* message) {
     l3info_t l3i = (l3info_t)malloc(sizeof(struct l3info));
     // cache mapping for the receiver
 
-    while (numOfSets != 12288) {
+    while (numOfSets != NUM_OF_LLC_SETS) {
         *l3 = l3_prepare(l3i, NULL);
         numOfSets = l3_getSets(*l3);
     }

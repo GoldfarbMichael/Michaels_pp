@@ -11,67 +11,21 @@
 #include <netinet/in.h>
 #include "prepare_receiver.h"
 #include "training.h"
-#include <limits.h>
 #include "../PrimeProbe/shared.h"
 #include <semaphore.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 
-
-
-#define REPS 10
-#define OFFSET_MONITOREDHEAD 0
-#define OFFSET_NMONITORED 8
 #define MISS_THRESHOLD 8
 #define LOWER_CPU 0
 #define UPPER_CPU 0
 #define CLOCK_NORMALIZER 1
 #define RECEIVER_LOG "../../cmake-build-debug/PrimeProbe/receiver_log.log"
-#define SLOT INT_MAX
 #define PROBE_CYCLES (2600000000/10000)  // should be a second
 
 #define SEM_TURN_SENDER "/sem_turn_sender"
 #define SEM_TURN_RECEIVER "/sem_turn_receiver"
 #define SEM_MAPPING "/sem_mapping"
 
-int countBitDifferences(const char *file1, const char *file2) {
-    FILE *fp1 = fopen(file1, "r");
-    FILE *fp2 = fopen(file2, "r");
-
-    if (!fp1 || !fp2) {
-        perror("Failed to open files");
-        if (fp1) fclose(fp1);
-        if (fp2) fclose(fp2);
-        return -1;
-    }
-
-    int bit1, bit2;
-    int differences = 0;
-    int position = 0; // Track bit position
-    int slice = 0; // Track slice number
-
-    // Compare bits character by character
-    while ((bit1 = fgetc(fp1)) != EOF && (bit2 = fgetc(fp2)) != EOF) {
-        if (bit1 != bit2) {
-            differences++;
-        }
-        position++;
-        if (position % 1024 == 0) {
-            printf("Slice %d: %d differing bits\n", slice, differences);
-            slice++;
-            differences = 0;
-        }
-    }
-
-    // Check if files have different lengths
-    if (bit1 != EOF || bit2 != EOF) {
-        printf("Files have different lengths; comparison stops at position %d.\n", position);
-    }
-
-    fclose(fp1);
-    fclose(fp2);
-    return differences;
-}
 
 void restore_message(const uint16_t *res, uint16_t *message, int numOfSlices) {
     // check for nulls
@@ -168,7 +122,7 @@ void log_time(const char *filename, const char *event, uint64_t time) {
 void evict_monitor_and_evict_sets(l3pp_t l3, int numOfSlices) {
     uint16_t* res = (uint16_t*) calloc(numOfSlices * MESSAGE_SIZE, sizeof(uint16_t));
     for (int i = 0; i < numOfSlices; i++) {
-        l3_monitor(l3, SET_INDEX + i * 1024);
+        l3_monitor(l3, SET_INDEX + i * NUM_OF_SETS_IN_SLICE);
     }
     l3_repeatedprobe(l3, 20, res, 1);
     free(res);
@@ -219,7 +173,7 @@ int main(int ac, char **av) {
     //
     // l3_unmonitorall(l3);
     // for (int i = 0; i < numOfSlices; i++) {
-    //     l3_monitor(l3, SET_INDEX + i * 1024);
+    //     l3_monitor(l3, SET_INDEX + i * NUM_OF_SETS_IN_SLICE);
     // }
 
     uint16_t *tempRes = (uint16_t*) calloc(numOfSlices, sizeof(uint16_t));
@@ -231,7 +185,7 @@ int main(int ac, char **av) {
     for (int j = 0; j < MESSAGE_SIZE; j++) {
         for (int slice = 0; slice < numOfSlices; slice++) {
             l3_unmonitorall(l3);
-            l3_monitor(l3, SET_INDEX + slice * 1024);
+            l3_monitor(l3, SET_INDEX + slice * NUM_OF_SETS_IN_SLICE);
 
             //***** wait for sender to end prime ******
             // printf("Receiver waiting for probe");
