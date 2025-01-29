@@ -56,21 +56,21 @@ void configure_reversed_linked_list(void **head_ptr) {
  * Assumes the linked list is circular
  */
 void traverse_monitored_addresses(void **head_ptr) {
-    for (int i = 0; i < 10; i++) {
-        if (!head_ptr) {
-            printf("The linked list is empty.\n");
-            return;
-        }
-        void *head = *head_ptr;
-        void *current = head;
-        do {
-            current = LNEXT(current);
-        } while (current && current != head); // Continue until we loop back to the head
-        current = *head_ptr;
-        do {
-            current = LNEXT(NEXTPTR(current));
-        }while (current && current != head); // Continue until we loop back to the head
+
+    if (!head_ptr) {
+        printf("The linked list is empty.\n");
+        return;
     }
+    void *head = *head_ptr;
+    void *current = head;
+    do {
+        current = LNEXT(current);
+    } while (current && current != head); // Continue until we loop back to the head
+    current = *head_ptr;
+    do {
+        current = LNEXT(NEXTPTR(current));
+    }while (current && current != head); // Continue until we loop back to the head
+
 }
 
 

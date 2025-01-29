@@ -5,8 +5,11 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sched.h>
+#include <semaphore.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <fcntl.h>    // For O_CREAT
 #define SYNC_FILE_R "/tmp/rceiver_prepared"
 #define SYNC_FILE_S "/tmp/sender_prepared"
 #define SENDER_LOG "../../cmake-build-debug/PrimeProbe/sender_log.log"
@@ -14,6 +17,12 @@
 #define NUM_ROUNDS 12
 #define LOWER_CPU 10
 #define UPPER_CPU 11
+#define SEM_TURN_SENDER "/sem_turn_sender"
+#define SEM_TURN_RECEIVER "/sem_turn_receiver"
+#define SEM_MAPPING "/sem_mapping"
+
+// #define SEM_DONE "/sem_done"    // Receiver → Sender (Cycle complete)
+
 
 void set_cpu_range(int start_cpu, int end_cpu) {
     cpu_set_t set;
@@ -94,11 +103,44 @@ void read_times(const char *filename, uint64_t *start, uint64_t *end) {
 }
 
 
+void initialize_semaphore(sem_t **sem, const char *name, int initial_value) {
+    sem_unlink(name);  // Ensure it's removed before re-creating it
+    *sem = sem_open(name, O_CREAT | O_RDWR, 0666, initial_value);
+    if (*sem == SEM_FAILED) {
+        perror("sem_open failed");
+        exit(1);
+    }
+}
+
 int main() {
     pid_t receiver_pid, sender_pid;
     set_cpu_range(LOWER_CPU, UPPER_CPU);
     char* senderPath = "../../cmake-build-debug/sender/sender";
     char* receiverPath = "../../cmake-build-debug/receiver/receiver";
+
+
+    sem_t *sem_turn_receiver, *sem_turn_sender;
+
+    // Initialize named semaphores
+    initialize_semaphore(&sem_turn_sender, SEM_TURN_SENDER, 1);
+    initialize_semaphore(&sem_turn_receiver, SEM_TURN_RECEIVER, 0); // Receiver must wait
+
+    // Fork the second child process to execute ./sender
+    sender_pid = fork();
+    if (sender_pid < 0) {
+        perror("Failed to fork sender process");
+        exit(EXIT_FAILURE);
+    }
+
+    if (sender_pid == 0) {
+        // In the child process for sender
+        printf("Starting sender process...\n\n");
+        execl(senderPath, "./sender", NULL);
+        // If execl returns, there was an error
+        perror("Failed to execute ./sender");
+        exit(EXIT_FAILURE);
+    }
+
 
 
 
@@ -119,21 +161,6 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    // Fork the second child process to execute ./sender
-    sender_pid = fork();
-    if (sender_pid < 0) {
-        perror("Failed to fork sender process");
-        exit(EXIT_FAILURE);
-    }
-
-    if (sender_pid == 0) {
-        // In the child process for sender
-        printf("Starting sender process...\n\n");
-        execl(senderPath, "./sender", NULL);
-        // If execl returns, there was an error
-        perror("Failed to execute ./sender");
-        exit(EXIT_FAILURE);
-    }
 
 
 
@@ -146,6 +173,12 @@ int main() {
 
     waitpid(sender_pid, &sender_status, 0); // Wait for sender
     printf("Sender process finished with status %d\n", WEXITSTATUS(sender_status));
+
+
+    // Cleanup semaphores
+    sem_unlink(SEM_TURN_RECEIVER);
+    sem_unlink(SEM_TURN_SENDER);
+
 
     LogData sender_data[NUM_ROUNDS];
     LogData receiver_data[NUM_ROUNDS];

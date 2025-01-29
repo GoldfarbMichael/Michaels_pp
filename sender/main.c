@@ -7,13 +7,22 @@
 #include "correlated_set.h"
 #include <sched.h>
 #include "../PrimeProbe/shared.h"
+#include <semaphore.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+
 #define LOWER_CPU 4
 #define UPPER_CPU 4
 #define CLOCK_NORMALIZER 1
 #define SYNC_FILE_R "/tmp/rceiver_prepared"
 #define SYNC_FILE_S "/tmp/sender_prepared"
 #define SENDER_LOG "../../cmake-build-debug/PrimeProbe/sender_log.log"
-#define PRIME_CYCLES (2600000000/100000)   // should be a second
+#define PRIME_CYCLES (2600000000/10000)   // should be a second
+
+
+// #define SEM_DONE "/sem_done"
+#define SEM_TURN_SENDER "/sem_turn_sender"
+#define SEM_TURN_RECEIVER "/sem_turn_receiver"
 
 void wait_for_receiver_ready(const char *file) {
     printf("Sender: Waiting for receiver to be ready...\n");
@@ -75,6 +84,14 @@ void log_time(const char *filename, const char *event, uint64_t time) {
 
 int main(int argc, char *argv[]) {
 
+    sem_t *sem_turn_receiver = sem_open(SEM_TURN_RECEIVER, O_RDWR);
+    sem_t *sem_turn_sender = sem_open(SEM_TURN_RECEIVER, O_RDWR);
+    if (sem_turn_sender == SEM_FAILED || sem_turn_receiver == SEM_FAILED) {
+
+        perror("sem_open failed");
+        exit(1);
+    }
+
     //start of sender preparation
     l3pp_t l3;
     uint8_t *message = calloc(MESSAGE_SIZE, sizeof(uint8_t));
@@ -97,15 +114,17 @@ int main(int argc, char *argv[]) {
 
     printf("----------------started priming----------------\n");
     signal_receiver_ready(SYNC_FILE_S);
-    // slotwait(3000000000U);
-    uint64_t end = 0;
-    for (int round = 0; round < 12; round++) {
-        for (int i =0; i < MESSAGE_SIZE; i++) {
-            // while (rdtscp64() < end + PRIME_CYCLES) {if (i == 0&&round==0) break;} //make the probe last for a second
 
+    for (int round = 0; round < 1; round++) {
+        for (int i =0; i < MESSAGE_SIZE; i++) {
+
+            sem_wait(sem_turn_sender); // wait for the next cycle
+            printf("Sender: Starting prime for message[%d] = \n", i);
             uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
-            correlated_prime(monitoredHead, message[i],0, traverseTime);
+            correlated_prime(monitoredHead, message[i],0, traverseTime); // PRIMING
             uint64_t end = rdtscp64()/CLOCK_NORMALIZER;
+            sem_post(sem_turn_receiver); // signal end of prime
+
             log_time(SENDER_LOG, "Priming start", start);
             log_time(SENDER_LOG, "Priming end", end);
             log_time(SENDER_LOG, "Priming took", end - start);
@@ -115,12 +134,12 @@ int main(int argc, char *argv[]) {
     }
     printf("---------------- priming ended----------------\n");
 
-    int cpu = sched_getcpu();
-    if (cpu == -1) {
-        perror("sched_getcpu");
-        return 1;
-    }
-    printf("SENDER!!!!!!! process is running on CPU core: %d\n", cpu);
+    // int cpu = sched_getcpu();
+    // if (cpu == -1) {
+    //     perror("sched_getcpu");
+    //     return 1;
+    // }
+    // printf("SENDER!!!!!!! process is running on CPU core: %d\n", cpu);
     free(message);
     l3_release(l3);
     return EXIT_SUCCESS;
