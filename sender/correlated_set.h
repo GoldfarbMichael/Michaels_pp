@@ -12,8 +12,8 @@
 #define SET_INDEX 6
 #define OFFSET_MONITOREDHEAD 0
 #define OFFSET_NMONITORED 8
-#define NUM_OF_LLC_SETS 12288
-#define NUM_OF_SETS_IN_SLICE 1024
+#define NUM_OF_LLC_SETS 16384
+#define NUM_OF_SETS_IN_SLICE 2048
 
 void *getHead(void *l3, int setIndex);
 void traverse_monitored_addresses(void **head_ptr);

@@ -11,8 +11,8 @@
 
 #define SET_INDEX 10
 #define MESSAGE_SIZE 50
-#define NUM_OF_LLC_SETS 12288
-#define NUM_OF_SETS_IN_SLICE 1024
+#define NUM_OF_LLC_SETS 16384
+#define NUM_OF_SETS_IN_SLICE 2048
 
 void prepare_receiver(l3pp_t *l3);
 

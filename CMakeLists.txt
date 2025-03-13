@@ -11,5 +11,6 @@ add_subdirectory(PrimeProbe)
 
 # Add an executable target
 add_executable(Michaels_PP main.c)
+target_link_libraries(PrimeProbe pthread)
 
 add_dependencies(Michaels_PP receiver sender PrimeProbe)

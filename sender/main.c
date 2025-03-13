@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
 
     printf("----------------started priming----------------\n");
     for (int i =0; i < MESSAGE_SIZE; i++) {
-        for (int round = 0; round < 12; round++) { //12 slices
+        for (int round = 0; round < l3_getSlices(l3); round++) {
 
             //***** wait for receiver to end probe ******
             sem_wait(sem_turn_sender);

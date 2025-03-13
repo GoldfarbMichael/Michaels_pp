@@ -23,5 +23,5 @@ set(MASTIK_SOURCES
 add_executable(sender main.c ${LIB_SOURCES}
         correlated_set.c
         correlated_set.h)
-
-target_link_libraries(sender PRIVATE ${CMAKE_SOURCE_DIR}/Mastik-main/src/libmastik.a)
+target_link_libraries(sender pthread)
+target_link_libraries(sender ${CMAKE_SOURCE_DIR}/Mastik-main/src/libmastik.a)

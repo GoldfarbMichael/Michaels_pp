@@ -25,5 +25,5 @@ add_executable(receiver main.c ${LIB_SOURCES}
         training.h
         prepare_receiver.c
         prepare_receiver.h)
-
-target_link_libraries(receiver PRIVATE ${CMAKE_SOURCE_DIR}/Mastik-main/src/libmastik.a)
+target_link_libraries(receiver pthread)
+target_link_libraries(receiver ${CMAKE_SOURCE_DIR}/Mastik-main/src/libmastik.a)
