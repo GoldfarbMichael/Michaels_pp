@@ -14,6 +14,7 @@
 #include "../PrimeProbe/shared.h"
 #include <semaphore.h>
 #include <fcntl.h>
+#include <stdbool.h>
 
 #define MISS_THRESHOLD 8
 #define LOWER_CPU 0
@@ -25,6 +26,7 @@
 #define SEM_TURN_SENDER "/sem_turn_sender"
 #define SEM_TURN_RECEIVER "/sem_turn_receiver"
 #define SEM_MAPPING "/sem_mapping"
+
 
 
 void restore_message(const uint16_t *res, uint16_t *message, int numOfSlices) {
@@ -45,6 +47,46 @@ void restore_message(const uint16_t *res, uint16_t *message, int numOfSlices) {
             message[i] = 0;
         }
     }
+}
+
+/**
+ *
+ * @param restoredMessage the restored message (size of the message is MESSAGE_SIZE * NumOfSlices)
+ * @param NumOfSlices number of slices
+ * @return returns true if the message is restored at with at least 70% accuracy
+ **/
+int is_restored(uint16_t *restoredMessage, int NumOfSlices)
+{
+    uint16_t message[MESSAGE_SIZE]; //init message
+    for (int i = 0; i < MESSAGE_SIZE; i++) {
+        if (i%2 == 0)
+            message[i] = 1;
+        else
+            message[i] = 0;
+    }
+
+    for (int sliceNum = 0; sliceNum < NumOfSlices; sliceNum++)
+    {
+        float sum = 0;
+        for (int i = 0; i < MESSAGE_SIZE; i++)
+        {
+            if (restoredMessage[sliceNum*NUM_OF_SETS_IN_SLICE + i] == message[i])
+                sum++;
+            else
+                sum --;
+        }
+        if (sum / (float)MESSAGE_SIZE >= 0.95)
+        {
+            printf("THE SUM IS %f\n", sum);
+            //print the restored message
+            for (int i = 0; i < MESSAGE_SIZE; i++)
+            {
+                printf("%d ", restoredMessage[sliceNum*NUM_OF_SETS_IN_SLICE + i]);
+            }
+            return 1;
+        }
+    }
+    return 0;
 }
 
 void stream_message_to_file(const uint16_t *message, const int numOfSlices) {
@@ -156,7 +198,7 @@ int main(int ac, char **av) {
 
     const int numOfSlices = l3_getSlices(l3);
     uint16_t* res = (uint16_t*) calloc(MESSAGE_SIZE * numOfSlices, sizeof(uint16_t));
-    for (int i = 0; i < MESSAGE_SIZE  * numOfSlices; i+= 2048/sizeof(uint16_t)) {
+    for (int i = 0; i < MESSAGE_SIZE; i+= 2048/sizeof(uint16_t)) {
         res[i] = 1;
     }
     //end of preparation
@@ -170,50 +212,74 @@ int main(int ac, char **av) {
         return 1;
     }
     fclose(file);
-    //
-    // l3_unmonitorall(l3);
-    // for (int i = 0; i < numOfSlices; i++) {
-    //     l3_monitor(l3, SET_INDEX + i * NUM_OF_SETS_IN_SLICE);
-    // }
 
-    uint16_t *tempRes = (uint16_t*) calloc(numOfSlices, sizeof(uint16_t));
+    uint16_t *tempRes = (uint16_t*) calloc(1, sizeof(uint16_t)); //size 1 is for searching for the set
+    uint16_t *message = (uint16_t*) calloc(MESSAGE_SIZE, sizeof(uint16_t));
+
     printf("\n--------starting probe--------\n");
     uint64_t end = 0;
-    // evict_monitor_and_evict_sets(l3, numOfSlices); // cleans the cache
-    // l3_probecount(l3, tempRes);
 
-    for (int j = 0; j < MESSAGE_SIZE; j++) {
-        for (int slice = 0; slice < numOfSlices; slice++) {
-            l3_unmonitorall(l3);
-            l3_monitor(l3, SET_INDEX + slice * NUM_OF_SETS_IN_SLICE);
-
-            //***** wait for sender to end prime ******
-            // printf("Receiver waiting for probe");
+    for ( int setNum = 0; setNum < NUM_OF_LLC_SETS; setNum++)
+    {
+        l3_unmonitorall(l3); // !!!!!!!TRY TO MOVE IT DOWN IN THE LOOP (ALSO THE MONITOR)!!!!!!!
+        l3_monitor(l3, setNum);
+        for (int i = 0;i < MESSAGE_SIZE; i++)
+        {
             sem_wait(sem_turn_receiver);
-            uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
             l3_probecount(l3, tempRes);
-            end = rdtscp64()/CLOCK_NORMALIZER;
-
             sem_post(sem_turn_sender);
-            //***** signal end of probe *****
-
-            res[slice * MESSAGE_SIZE + j] = tempRes[0];
-
-            // log_time(RECEIVER_LOG, "Probing start", start);
-            // log_time(RECEIVER_LOG, "Probing end", end);
-            // log_time(RECEIVER_LOG, "Probing took", end - start);
-            // log_time(RECEIVER_LOG, "------------------------------------", 0);
+            res[i] = tempRes[0];
         }
-
-        // while (rdtscp64() < start + PROBE_CYCLES) {} //make the probe last for a second
+        restore_message(res, message, 1);
+        if (is_restored(message, 1) == 1)
+        {
+            printf("SETNUM %d\n", setNum);
+            print_res(res, 1);
+            break;
+        }
 
     }
 
-    printf("--------probe ended--------\n\n");
-    print_res(res, numOfSlices);
 
-    uint16_t *message = (uint16_t*) calloc(MESSAGE_SIZE * numOfSlices, sizeof(uint16_t));
-    restore_message(res, message, numOfSlices);
+
+
+    // for (int setNum = 0; setNum < NUM_OF_SETS_IN_SLICE; setNum++ )
+    // {
+    //     iterNum++;
+    //     for (int j = 0; j < MESSAGE_SIZE; j++) {
+    //         for (int slice = 0; slice < numOfSlices; slice++) {
+    //             l3_unmonitorall(l3);
+    //             l3_monitor(l3, SET_INDEX + slice * NUM_OF_SETS_IN_SLICE);
+    //
+    //             //***** wait for sender to end prime ******
+    //             // printf("Receiver waiting for probe");
+    //             sem_wait(sem_turn_receiver);
+    //             uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
+    //             l3_probecount(l3, tempRes);
+    //             end = rdtscp64()/CLOCK_NORMALIZER;
+    //             sem_post(sem_turn_sender);
+    //             //***** signal end of probe *****
+    //
+    //             res[slice * MESSAGE_SIZE + j] = tempRes[0];
+    //
+    //         }
+    //
+    //         // while (rdtscp64() < start + PROBE_CYCLES) {} //make the probe last for a second
+    //
+    //     }
+    //
+    //     restore_message(res, message, numOfSlices);
+    //
+    //     if (is_restored(message, numOfSlices) == 1) {
+    //         printf("ITERNUM %d\n", iterNum);
+    //         print_res(res, numOfSlices);
+    //
+    //         break;
+    //     }
+    // }
+    printf("--------probe ended--------\n\n");
+
+    // restore_message(res, message, numOfSlices);
     stream_message_to_file(message, numOfSlices);
 
     l3_unmonitorall(l3);

@@ -169,6 +169,12 @@ int main() {
     waitpid(receiver_pid, &receiver_status, 0); // Wait for receiver
     printf("Receiver process finished with status %d\n", WEXITSTATUS(receiver_status));
 
+
+    // Terminate the sender process
+    if (kill(sender_pid, SIGTERM) != 0) {
+        perror("Failed to terminate sender process");
+    }
+
     waitpid(sender_pid, &sender_status, 0); // Wait for sender
     printf("Sender process finished with status %d\n", WEXITSTATUS(sender_status));
 

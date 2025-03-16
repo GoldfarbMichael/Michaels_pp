@@ -90,7 +90,9 @@ int main(int argc, char *argv[]) {
     prepare_sender(&l3, message);
     void* monitoredHead = getHead(l3, 0);
 
-    monitor_all_sets(&l3); // ****************** Necessary for priming all sets ************
+    // monitor_all_sets(&l3); // ****************** Necessary for priming all sets ************
+    l3_unmonitorall(l3);
+    l3_monitor(l3, SET_INDEX);
     printf("sender exiting mapping...\n");
 
     // uint64_t traverseTime = get_time_to_traverse(monitoredHead);
@@ -99,27 +101,38 @@ int main(int argc, char *argv[]) {
 
 
     printf("----------------started priming----------------\n");
-    for (int i =0; i < MESSAGE_SIZE; i++) {
-        for (int round = 0; round < l3_getSlices(l3); round++) {
 
-            //***** wait for receiver to end probe ******
+    for (int setNum = 0; setNum < NUM_OF_LLC_SETS; setNum++) //iterates only on SET_INDEX but does it NUM_OF_LLC_SETS times
+    {
+        for (int i = 0; i < MESSAGE_SIZE; i++)
+        {
             sem_wait(sem_turn_sender);
-            uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
-
             prime_all_sets(&l3, message[i]);
-            // correlated_prime(monitoredHead, message[i],0, traverseTime); // PRIMING
-
-            uint64_t end = rdtscp64()/CLOCK_NORMALIZER;
             sem_post(sem_turn_receiver);
-            //***** signal end of prime *****
-            //
-            // log_time(SENDER_LOG, "Priming start", start);
-            // log_time(SENDER_LOG, "Priming end", end);
-            // log_time(SENDER_LOG, "Priming took", end - start);
-            // log_time(SENDER_LOG, "------------------------------------", 0);
-            // // while (rdtscp64() < start + PRIME_CYCLES) {}
         }
     }
+
+
+
+    // for (int setNum = 0; setNum < NUM_OF_SETS_IN_SLICE; setNum++ )
+    // {
+    //
+    //     for (int i =0; i < MESSAGE_SIZE; i++) {
+    //         for (int round = 0; round < l3_getSlices(l3); round++) {
+    //
+    //             //***** wait for receiver to end probe ******
+    //             sem_wait(sem_turn_sender);
+    //             uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
+    //
+    //             prime_all_sets(&l3, message[i]);
+    //
+    //             uint64_t end = rdtscp64()/CLOCK_NORMALIZER;
+    //             sem_post(sem_turn_receiver);
+    //             //***** signal end of prime *****
+    //
+    //         }
+    //     }
+    // }
     printf("---------------- priming ended----------------\n");
 
     free(message);
