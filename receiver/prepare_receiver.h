@@ -10,7 +10,7 @@
 #include <mastik/util.h>
 
 #define SET_INDEX 6
-#define MESSAGE_SIZE 20
+#define MESSAGE_SIZE 1000
 #define NUM_OF_LLC_SETS 16384
 #define NUM_OF_SETS_IN_SLICE 2048
 

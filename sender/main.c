@@ -13,9 +13,9 @@
 
 #define LOWER_CPU 4
 #define UPPER_CPU 4
-#define CLOCK_NORMALIZER 1
+#define CLOCK_NORMALIZER (3600*1)
 #define SENDER_LOG "../../cmake-build-debug/PrimeProbe/sender_log.log"
-#define PRIME_CYCLES (2600000000/10000)   // should be a second
+#define PRIME_CYCLES (3600000000/CLOCK_NORMALIZER)   // should be a second
 
 #define SEM_TURN_SENDER "/sem_turn_sender"
 #define SEM_TURN_RECEIVER "/sem_turn_receiver"
@@ -101,38 +101,30 @@ int main(int argc, char *argv[]) {
 
 
     printf("----------------started priming----------------\n");
-
+    uint64_t sumTime = 0;
+    uint64_t avgTime = 0;
+    uint64_t maxTime = 0;
     for (int setNum = 0; setNum < NUM_OF_LLC_SETS; setNum++) //iterates only on SET_INDEX but does it NUM_OF_LLC_SETS times
     {
+
         for (int i = 0; i < MESSAGE_SIZE; i++)
         {
+            uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
             sem_wait(sem_turn_sender);
-            prime_all_sets(&l3, message[i]);
+            prime_monitored_sets(&l3, message[i]);
             sem_post(sem_turn_receiver);
+            // uint64_t end = rdtscp64()/CLOCK_NORMALIZER;
+
+            while (rdtscp64() < start + PRIME_CYCLES) {} //make the probe last for PRIME_CYCLES
+
         }
+        // sumTime += end - start;
+        // avgTime = sumTime/(setNum + 1);
+
+        // log_time(SENDER_LOG, "SENDER MESSAGE TIME ", avgTime);
+        // log_time(SENDER_LOG, "SENDER MAX MESSAGE TIME ", maxTime);
+
     }
-
-
-
-    // for (int setNum = 0; setNum < NUM_OF_SETS_IN_SLICE; setNum++ )
-    // {
-    //
-    //     for (int i =0; i < MESSAGE_SIZE; i++) {
-    //         for (int round = 0; round < l3_getSlices(l3); round++) {
-    //
-    //             //***** wait for receiver to end probe ******
-    //             sem_wait(sem_turn_sender);
-    //             uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
-    //
-    //             prime_all_sets(&l3, message[i]);
-    //
-    //             uint64_t end = rdtscp64()/CLOCK_NORMALIZER;
-    //             sem_post(sem_turn_receiver);
-    //             //***** signal end of prime *****
-    //
-    //         }
-    //     }
-    // }
     printf("---------------- priming ended----------------\n");
 
     free(message);

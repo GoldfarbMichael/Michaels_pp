@@ -81,7 +81,7 @@ void monitor_all_sets(l3pp_t* l3) {
     }
 }
 
-void prime_all_sets(l3pp_t* l3, uint8_t bit) {
+void prime_monitored_sets(l3pp_t* l3, uint8_t bit) {
     int nmonitored = l3_getSets(*l3);
 
     uint16_t* res = (uint16_t*) calloc(nmonitored, sizeof(uint16_t));

@@ -19,9 +19,9 @@
 #define MISS_THRESHOLD 8
 #define LOWER_CPU 0
 #define UPPER_CPU 0
-#define CLOCK_NORMALIZER 1
+#define CLOCK_NORMALIZER (3600*1)
 #define RECEIVER_LOG "../../cmake-build-debug/PrimeProbe/receiver_log.log"
-#define PROBE_CYCLES (2600000000/10000)  // should be a second
+#define PROBE_CYCLES (3600000000/CLOCK_NORMALIZER)  // should be a second
 
 #define SEM_TURN_SENDER "/sem_turn_sender"
 #define SEM_TURN_RECEIVER "/sem_turn_receiver"
@@ -75,7 +75,7 @@ int is_restored(uint16_t *restoredMessage, int NumOfSlices)
             else
                 sum --;
         }
-        if (sum / (float)MESSAGE_SIZE >= 0.95)
+        if (sum / (float)MESSAGE_SIZE >= 0.9)
         {
             printf("THE SUM IS %f\n", sum);
             //print the restored message
@@ -217,19 +217,32 @@ int main(int ac, char **av) {
     uint16_t *message = (uint16_t*) calloc(MESSAGE_SIZE, sizeof(uint16_t));
 
     printf("\n--------starting probe--------\n");
-    uint64_t end = 0;
-
+    uint64_t maxTime = 0;
     for ( int setNum = 0; setNum < NUM_OF_LLC_SETS; setNum++)
     {
-        l3_unmonitorall(l3); // !!!!!!!TRY TO MOVE IT DOWN IN THE LOOP (ALSO THE MONITOR)!!!!!!!
+        l3_unmonitorall(l3);
         l3_monitor(l3, setNum);
         for (int i = 0;i < MESSAGE_SIZE; i++)
         {
-            sem_wait(sem_turn_receiver);
+            uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
+
+            // sem_wait(sem_turn_receiver);
             l3_probecount(l3, tempRes);
-            sem_post(sem_turn_sender);
+            uint64_t end = rdtscp64()/CLOCK_NORMALIZER;
+            // if (end - start > maxTime) {
+            //     maxTime = end - start;
+            // }
+            // sem_post(sem_turn_sender);
+            while (rdtscp64() < start + PROBE_CYCLES) {} //make the probe last for PROBE_CYCLES
+
             res[i] = tempRes[0];
+
         }
+        // sumTime += end - start;
+        // avgTime = sumTime/(setNum + 1);
+
+        // log_time(RECEIVER_LOG, "RECEIVER MAX MESSAGE TIME ", maxTime);
+        // log_time(RECEIVER_LOG, "RECEIVER MESSAGE TIME ", avgTime);
         restore_message(res, message, 1);
         if (is_restored(message, 1) == 1)
         {
@@ -237,8 +250,8 @@ int main(int ac, char **av) {
             print_res(res, 1);
             break;
         }
-
     }
+    // log_time(RECEIVER_LOG, "RECEIVER MAX MESSAGE TIME ", maxTime);
 
 
 
