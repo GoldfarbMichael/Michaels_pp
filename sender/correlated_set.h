@@ -8,8 +8,11 @@
 #include <mastik/util.h>
 
 
-#define SET_INDEX 150
-#define MESSAGE_SIZE 1000
+#define SET_INDEX 6
+#define MESSAGE_SIZE 512
+// #define MESSAGE_STR "The quick brown fox jumps over 13 lazy dogs! Stealthy bits whisper secrets through silent L3 shadows. Keep it hidden please bla."
+#define MESSAGE_STR "The quick brown fox jumps over 13 lazy dogs!Stealthy bits secret"
+
 #define OFFSET_MONITOREDHEAD 0
 #define OFFSET_NMONITORED 8
 #define NUM_OF_LLC_SETS 16384

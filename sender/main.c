@@ -1,11 +1,9 @@
-#define _GNU_SOURCE
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <mastik/l3.h>
 #include <mastik/impl.h>
 #include "correlated_set.h"
-#include <sched.h>
 #include "../PrimeProbe/shared.h"
 #include <semaphore.h>
 #include <fcntl.h>
@@ -13,57 +11,23 @@
 
 #define LOWER_CPU 4
 #define UPPER_CPU 4
-#define CLOCK_NORMALIZER (3600*1)
+#define CLOCK_NORMALIZER (1)
 #define SENDER_LOG "../../cmake-build-debug/PrimeProbe/sender_log.log"
 #define PRIME_CYCLES (3600000000/CLOCK_NORMALIZER)   // should be a second
 
 #define SEM_TURN_SENDER "/sem_turn_sender"
 #define SEM_TURN_RECEIVER "/sem_turn_receiver"
 #define SEM_MAPPING "/sem_mapping"
-
-
-void openLink(char* url) {
-    char command[2048];
-    snprintf(command, sizeof(command), "taskset -c 0 firefox %s &", url);
-    int result = system(command);
-
-    // Check if the command was executed successfully
-    if (result != 0) {
-        fprintf(stderr, "Failed to open the URL\n");
-    }
-}
-
-void set_cpu_range(int start_cpu, int end_cpu) {
-    cpu_set_t set;
-    CPU_ZERO(&set); // Clear the CPU mask
-
-    // Add CPUs in the specified range to the mask
-    for (int i = start_cpu; i <= end_cpu; i++) {
-        CPU_SET(i, &set);
-    }
-
-    // Apply the CPU affinity to the current process
-    if (sched_setaffinity(0, sizeof(cpu_set_t), &set) != 0) {
-        perror("sched_setaffinity");
-    }
-}
-
-void log_time(const char *filename, const char *event, uint64_t time) {
-    FILE *file = fopen(filename, "a");
-    if (!file) {
-        perror("Failed to open log file");
-        return;
-    }
-    fprintf(file, "%s %lu\n", event, time);
-    fclose(file);
-}
-
+#define SEM_NEXT_SET "/sem_nextSet"
 
 
 int main(int argc, char *argv[]) {
     sem_t *sem_mapping = sem_open(SEM_MAPPING, O_RDWR);
     sem_t *sem_turn_receiver = sem_open(SEM_TURN_RECEIVER, O_RDWR);
     sem_t *sem_turn_sender = sem_open(SEM_TURN_SENDER, O_RDWR);
+    sem_t *sem_nextSet = sem_open(SEM_NEXT_SET, O_RDWR);
+
+
     if (sem_turn_sender == SEM_FAILED || sem_turn_receiver == SEM_FAILED || sem_mapping == SEM_FAILED) {
         perror("sem_open failed");
         exit(1);
@@ -90,6 +54,7 @@ int main(int argc, char *argv[]) {
     prepare_sender(&l3, message);
     void* monitoredHead = getHead(l3, 0);
 
+
     // monitor_all_sets(&l3); // ****************** Necessary for priming all sets ************
     l3_unmonitorall(l3);
     l3_monitor(l3, SET_INDEX);
@@ -104,27 +69,45 @@ int main(int argc, char *argv[]) {
     uint64_t sumTime = 0;
     uint64_t avgTime = 0;
     uint64_t maxTime = 0;
-    for (int setNum = 0; setNum < NUM_OF_LLC_SETS; setNum++) //iterates only on SET_INDEX but does it NUM_OF_LLC_SETS times
-    {
-
-        for (int i = 0; i < MESSAGE_SIZE; i++)
+    int setIndex = 0;
+        for ( int setNum = 0; setNum < NUM_OF_LLC_SETS; setNum++) //iterates only on SET_INDEX but does it NUM_OF_LLC_SETS times
         {
-            uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
-            sem_wait(sem_turn_sender);
-            prime_monitored_sets(&l3, message[i]);
-            sem_post(sem_turn_receiver);
-            // uint64_t end = rdtscp64()/CLOCK_NORMALIZER;
+            // l3_unmonitorall(l3);
+            // l3_monitor(l3, setIndex);
+            // printf("setIndex: %d\n", setIndex);
+            for (int i = 0; i < MESSAGE_SIZE; i++)
+            {
+                // uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
+                sem_wait(sem_turn_sender);
+                prime_monitored_sets(&l3, message[i]);
+                sem_post(sem_turn_receiver);
+                // uint64_t end = rdtscp64()/CLOCK_NORMALIZER;
 
-            while (rdtscp64() < start + PRIME_CYCLES) {} //make the probe last for PRIME_CYCLES
+                // while (rdtscp64() < start + PRIME_CYCLES) {} //make the probe last for PRIME_CYCLES
 
+            }
+            // sumTime += end - start;
+            // avgTime = sumTime/(setNum + 1);
+
+            // log_time(SENDER_LOG, "SENDER MESSAGE TIME ", avgTime);
+            // log_time(SENDER_LOG, "SENDER MAX MESSAGE TIME ", maxTime);
+
+
+            // if (sem_trywait(sem_nextSet) == 0) {
+            //     // Critical section
+            //     setIndex++;
+            //     sem_post(sem_nextSet);
+            //     break;
+            //
+            // }
         }
-        // sumTime += end - start;
-        // avgTime = sumTime/(setNum + 1);
+        // printf("waiting in the sender...\n");
+        // sem_wait(sem_nextSet);
+        // // Critical section
+        // setIndex++;
+        // sem_post(sem_nextSet);
+        // printf("relesed in the sender...\n");
 
-        // log_time(SENDER_LOG, "SENDER MESSAGE TIME ", avgTime);
-        // log_time(SENDER_LOG, "SENDER MAX MESSAGE TIME ", maxTime);
-
-    }
     printf("---------------- priming ended----------------\n");
 
     free(message);

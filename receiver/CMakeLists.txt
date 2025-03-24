@@ -24,6 +24,10 @@ add_executable(receiver main.c ${LIB_SOURCES}
         training.c
         training.h
         prepare_receiver.c
-        prepare_receiver.h)
+        prepare_receiver.h
+        utils.c
+        utils.h
+        ../PrimeProbe/shared.c
+        ../PrimeProbe/shared.h)
 target_link_libraries(receiver pthread)
 target_link_libraries(receiver ${CMAKE_SOURCE_DIR}/Mastik-main/src/libmastik.a)

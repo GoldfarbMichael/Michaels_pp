@@ -1,40 +1,24 @@
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <sched.h>
 #include <semaphore.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>    // For O_CREAT
+#include "shared.h"
+
 #define SENDER_LOG "../../cmake-build-debug/PrimeProbe/sender_log.log"
 #define RECEIVER_LOG "../../cmake-build-debug/PrimeProbe/receiver_log.log"
 #define MESSAGE_SIZE 20
-#define LOWER_CPU 10
-#define UPPER_CPU 11
+#define LOWER_CPU 7
+#define UPPER_CPU 7
 #define SEM_TURN_SENDER "/sem_turn_sender"
 #define SEM_TURN_RECEIVER "/sem_turn_receiver"
 #define SEM_MAPPING "/sem_mapping"
-
-
-
-void set_cpu_range(int start_cpu, int end_cpu) {
-    cpu_set_t set;
-    CPU_ZERO(&set); // Clear the CPU mask
-
-    // Add CPUs in the specified range to the mask
-    for (int i = start_cpu; i <= end_cpu; i++) {
-        CPU_SET(i, &set);
-    }
-
-    // Apply the CPU affinity to the current process
-    if (sched_setaffinity(0, sizeof(cpu_set_t), &set) != 0) {
-        perror("sched_setaffinity");
-    }
-}
+#define SEM_NEXT_SET "/sem_nextSet"
 
 typedef struct {
     uint64_t start;
@@ -111,17 +95,21 @@ void initialize_semaphore(sem_t **sem, const char *name, int initial_value) {
 
 int main() {
     pid_t receiver_pid, sender_pid;
+
     set_cpu_range(LOWER_CPU, UPPER_CPU);
+
     char* senderPath = "../../cmake-build-debug/sender/sender";
     char* receiverPath = "../../cmake-build-debug/receiver/receiver";
 
 
-    sem_t *sem_turn_receiver, *sem_turn_sender, *sem_mapping;
+    sem_t *sem_turn_receiver, *sem_turn_sender, *sem_mapping, *sem_nextSet;
 
     // Initialize named semaphores
     initialize_semaphore(&sem_mapping, SEM_MAPPING, 1);
     initialize_semaphore(&sem_turn_sender, SEM_TURN_SENDER, 1);
     initialize_semaphore(&sem_turn_receiver, SEM_TURN_RECEIVER, 0); // Receiver must wait
+    initialize_semaphore(&sem_nextSet, SEM_NEXT_SET, 1); // Receiver must aquire first
+
 
     // Fork the second child process to execute ./sender
     sender_pid = fork();

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "correlated_set.h"
 
+#include <string.h>
 
 
 /*
@@ -135,13 +136,33 @@ void correlated_prime(void* head, const uint8_t bit, int slot, uint64_t traverse
     }
 }
 
+
 void create_message(uint8_t *message) {
-    for (int i = 0; i < MESSAGE_SIZE; i++) {
-        if (i%2 == 0)
-            message[i] = 1;
-        else
-            message[i] = 0;
+    size_t len = strlen(MESSAGE_STR);  // 128 characters
+    printf("STR LEN: %ld\n", len);
+    // Convert each character to its 8-bit binary representation
+    for (size_t i = 0; i < len; i++) {
+        char c = MESSAGE_STR[i];
+        for (int b = 7; b >= 0; b--) {
+            message[i * 8 + (7 - b)] = (c >> b) & 1;
+        }
     }
+    // Optional: Print the binary bit array
+    // printf("Binary bit array (1024 bits):\n");
+    // for (size_t i = 0; i < MESSAGE_SIZE; i++) {
+    //     printf("%d", message[i]);
+    //     if ((i + 1) % 8 == 0) printf(" ");
+    //     if ((i + 1) % 64 == 0) printf("\n");
+    // }
+    // print_string_from_bits(message);
+
+
+    // for (int i = 0; i < MESSAGE_SIZE; i++) {
+    //     if (i%2 == 0)
+    //         message[i] = 1;
+    //     else
+    //         message[i] = 1;
+    // }
 }
 
 void prepare_sender(l3pp_t* l3, uint8_t* message) {

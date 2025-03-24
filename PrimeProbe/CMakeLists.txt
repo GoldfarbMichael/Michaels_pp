@@ -12,4 +12,6 @@ add_library(PrimeProbeLib
 # Export the include directory for other subprojects
 target_include_directories(PrimeProbeLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(PrimeProbe main.c)
+add_executable(PrimeProbe main.c
+                shared.c
+                shared.h)
