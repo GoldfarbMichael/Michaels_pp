@@ -3,6 +3,10 @@ project(PrimeProbe C)
 
 set(CMAKE_C_STANDARD 17)
 
+# ASan flags for all targets in this CMakeLists.txt
+#add_compile_options(-fsanitize=address -fno-omit-frame-pointer -g -O0)
+#add_link_options(-fsanitize=address)
+
 # Create a library for shared functionality
 add_library(PrimeProbeLib
         shared.c

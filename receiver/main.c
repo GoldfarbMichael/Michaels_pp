@@ -19,15 +19,32 @@
 #define MISS_THRESHOLD 5
 #define LOWER_CPU 0
 #define UPPER_CPU 0
-#define CLOCK_NORMALIZER (1)
-#define RECEIVER_LOG "../../cmake-build-debug/PrimeProbe/receiver_log.log"
-#define PROBE_CYCLES (3600000000/CLOCK_NORMALIZER)  // should be a second
+#define TSC_FREQ 3600000000ULL
+#define TSC_OFFSET 100000000ULL        // start 100M cycles after epoch (≈33ms)
+#define CLOCK_NORMALIZER 36000
+#define RECEIVER_LOG "../../cmake-build-debug/PrimeProbe/receiver_log.csv"
+#define PROBE_CYCLES (TSC_FREQ/CLOCK_NORMALIZER)  // should be a second
 
 #define SEM_TURN_SENDER "/sem_turn_sender"
 #define SEM_TURN_RECEIVER "/sem_turn_receiver"
 #define SEM_MAPPING "/sem_mapping"
-#define SEM_NEXT_SET "/sem_nextSet"
 
+
+volatile uint64_t calculate_avg_monitor_time(int reps, l3pp_t *l3)
+{
+    uint64_t start_time;
+    uint64_t end_time;
+    uint64_t sum = 0;
+    for (int i = 0; i < reps; i++)
+    {
+        start_time = rdtscp64();
+        l3_unmonitorall(*l3);
+        l3_monitor(*l3, i*1024);
+        end_time = rdtscp64();
+        sum += end_time - start_time;
+    }
+    return sum / reps;
+}
 
 uint64_t get_probe_time(l3pp_t l3, uint16_t *res) {
     uint64_t start = rdtscp64();
@@ -52,7 +69,6 @@ void restore_message(const uint16_t *res, uint16_t *message, int numOfSlices) {
         fprintf(stderr, "Error: NULL pointer passed to restore_message.\n");
         return;
     }
-    // printf("%4d ", (int16_t)(res[index]));
     for (int i = 0; i < MESSAGE_SIZE * numOfSlices; i++) {
         if ((int16_t)res[i] >= MISS_THRESHOLD) {
             message[i] = 1;
@@ -66,9 +82,9 @@ void restore_message(const uint16_t *res, uint16_t *message, int numOfSlices) {
     }
 }
 
-void find_expected_message(uint8_t *searched_seq)
+void find_expected_message(uint16_t *searched_seq)
 {
-    for (size_t i = 0; i < MESSAGE_SIZE; i++) {
+    for (size_t i = 0; i < MESSAGE_LEN; i++) {
         char c = MESSAGE_STR[i];
         for (int b = 7; b >= 0; b--) {
             searched_seq[i * 8 + (7 - b)] = (c >> b) & 1;
@@ -85,7 +101,7 @@ void find_expected_message(uint8_t *searched_seq)
  * @param accuracy the desired accuracy in order to declare that the message restored correctly
  * @return returns true if the message is restored at with at least "accuracy" accuracy
  **/
-int is_restored(const uint16_t *restoredMessage, const uint8_t *expectedMessage, int NumOfSlices, const float accuracy)
+int is_restored(const uint16_t *restoredMessage, const uint16_t *expectedMessage, int NumOfSlices, const float accuracy)
 {
     for (int sliceNum = 0; sliceNum < NumOfSlices; sliceNum++)
     {
@@ -115,14 +131,16 @@ int is_restored(const uint16_t *restoredMessage, const uint8_t *expectedMessage,
 }
 
 
-int main(int ac, char **av) {
-
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        fprintf(stderr, "Missing start_time argument\n");
+        return 1;
+    }
+    uint64_t startPP = strtoull(argv[1], NULL, 10) + 40000;
     sem_t *sem_mapping = sem_open(SEM_MAPPING, O_RDWR);
     sem_t *sem_turn_receiver = sem_open(SEM_TURN_RECEIVER, O_RDWR);
     sem_t *sem_turn_sender = sem_open(SEM_TURN_SENDER, O_RDWR);
-    sem_t *sem_nextSet = sem_open(SEM_NEXT_SET, O_RDWR);
-
-    uint8_t expectedMessage[MESSAGE_SIZE];
+    uint16_t expectedMessage[MESSAGE_SIZE];
     find_expected_message(expectedMessage);
 
     if (sem_turn_sender == SEM_FAILED || sem_turn_receiver == SEM_FAILED || sem_mapping == SEM_FAILED) {
@@ -133,6 +151,8 @@ int main(int ac, char **av) {
     //start of preparation
     l3pp_t l3;
     set_cpu_range(LOWER_CPU, UPPER_CPU);
+    printf("RECEIVER RUNS ON CORE NUM: ");
+    print_core();
 
     //***** lock the mapping *****
     printf("Receiver waiting for mapping...\n");
@@ -140,6 +160,7 @@ int main(int ac, char **av) {
     printf("Receiver mapping\n");
 
     prepare_receiver(&l3);
+    printf("asdasdongsdkm:   %lu\n", calculate_avg_monitor_time(500, &l3));
 
     printf("Receiver exiting  mapping...\n");
     sem_post(sem_mapping);
@@ -150,99 +171,43 @@ int main(int ac, char **av) {
     for (int i = 0; i < MESSAGE_SIZE; i+= 2048/sizeof(uint16_t)) {
         res[i] = 1;
     }
-    //end of preparation
-
-    FILE *file = fopen(RECEIVER_LOG, "w"); //empty log file
-    if (!file) {
-        perror("Failed to open log file");
-        l3_unmonitorall(l3);
-        l3_release(l3);
-        free(res);
-        return 1;
-    }
-    fclose(file);
 
     uint16_t *tempRes = (uint16_t*) calloc(1, sizeof(uint16_t)); //size 1 is for searching for the set
     uint16_t *message = (uint16_t*) calloc(MESSAGE_SIZE, sizeof(uint16_t));
-
     printf("\n--------starting probe--------\n");
     uint64_t maxTime = 0;
+    printf("TIME AT RECEIVER OUTSIDE=== %lu\n", rdtscp64());
 
-    // for (int round = 0; round < 5; round++)
-    // {
-    //     // sem_wait(sem_nextSet);
-    //     printf("AQUIRED AT RECIEVER %d...\n", round);
-    //     for ( int setNum = 0; setNum < NUM_OF_LLC_SETS; setNum++)
-    //     {
-    //         l3_unmonitorall(l3);
-    //         l3_monitor(l3, setNum);
-    //         for (int i = 0;i < MESSAGE_SIZE; i++)
-    //         {
-    //             // uint64_t start = rdtscp64()/CLOCK_NORMALIZER;
-    //
-    //             sem_wait(sem_turn_receiver);
-    //             l3_probecount(l3, tempRes);
-    //             // uint64_t end = rdtscp64()/CLOCK_NORMALIZER;
-    //             // if (end - start > maxTime) {
-    //             //     maxTime = end - start;
-    //             // }
-    //             sem_post(sem_turn_sender);
-    //             // while (rdtscp64() < start + PROBE_CYCLES) {} //make the probe last for PROBE_CYCLES
-    //             res[i] = tempRes[0];
-    //
-    //         }
-    //         // sumTime += end - start;
-    //         // avgTime = sumTime/(setNum + 1);
-    //
-    //         // log_time(RECEIVER_LOG, "RECEIVER MAX MESSAGE TIME ", maxTime);
-    //         // log_time(RECEIVER_LOG, "RECEIVER MESSAGE TIME ", avgTime);
-    //         restore_message(res, message, 1);
-    //         if (is_restored(message,expectedMessage , 1, 0.98) == 1)
-    //         {
-    //             printf("SETNUM %d\n", setNum);
-    //             print_res(res, 1);
-    //             // sem_post(sem_nextSet);
-    //             // sleep(1);
-    //             printf("RELEASED AT RECIEVER %d...\n", round);
-    //             break;
-    //         }
-    //     }
-    // }
-    // log_time(RECEIVER_LOG, "RECEIVER MAX MESSAGE TIME ", maxTime);
-
-    for (int round = 0; round < 5; round++)
+    for (int round = 0; round < 8; round++)
     {
         for ( int setNum = SET_INDEX; setNum < NUM_OF_LLC_SETS; setNum+=1024)
         {
             l3_unmonitorall(l3);
             l3_monitor(l3, setNum);
+
             for (int i = 0;i < MESSAGE_SIZE; i++)
             {
-                sem_wait(sem_turn_receiver);
+                // sem_wait(sem_turn_receiver);
+                while (rdtscp64() < startPP) {asm volatile("pause");}
                 l3_probecount(l3, tempRes);
-                sem_post(sem_turn_sender);
+                startPP += 70000;
+                // sem_post(sem_turn_sender);
                 res[i] = tempRes[0];
+
             }
             restore_message(res, message, 1);
-            if (is_restored(message,expectedMessage , 1, 0.98) == 1)
+            if (is_restored(message,expectedMessage , 1, 0.95) == 1)
             {
                 printf("SETNUM %d -- ROUND NUM %d\n", setNum, round);
-                // print_res(res, 1);
                 break;
             }
         }
     }
     printf("--------probe ended--------\n\n");
-
-    // restore_message(res, message, numOfSlices);
-    // stream_message_to_file(message, numOfSlices);
-
     l3_unmonitorall(l3);
     l3_release(l3);
     free(res);
     free(message);
     free(tempRes);
-
     return 0;
 }
-// 5056 5346 5717 5766

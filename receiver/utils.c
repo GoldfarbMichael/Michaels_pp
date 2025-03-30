@@ -47,3 +47,4 @@ void print_res(const uint16_t *res, const int numOfSlices) {
         printf("\n"); // New line for the next slice
     }
 }
+

@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.30)
 project(receiver C)
 set(CMAKE_C_STANDARD 17)
 
+#add_compile_options(-fsanitize=address -fno-omit-frame-pointer -g -O0)
+#add_link_options(-fsanitize=address)
 
 include_directories(${CMAKE_SOURCE_DIR}/Mastik-main/mastik)
 

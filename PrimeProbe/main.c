@@ -8,6 +8,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>    // For O_CREAT
+#include <mastik/low.h>
+
 #include "shared.h"
 
 #define SENDER_LOG "../../cmake-build-debug/PrimeProbe/sender_log.log"
@@ -18,8 +20,7 @@
 #define SEM_TURN_SENDER "/sem_turn_sender"
 #define SEM_TURN_RECEIVER "/sem_turn_receiver"
 #define SEM_MAPPING "/sem_mapping"
-#define SEM_NEXT_SET "/sem_nextSet"
-
+#define START_DELAY (5*3600000000ULL)
 typedef struct {
     uint64_t start;
     uint64_t end;
@@ -108,8 +109,9 @@ int main() {
     initialize_semaphore(&sem_mapping, SEM_MAPPING, 1);
     initialize_semaphore(&sem_turn_sender, SEM_TURN_SENDER, 1);
     initialize_semaphore(&sem_turn_receiver, SEM_TURN_RECEIVER, 0); // Receiver must wait
-    initialize_semaphore(&sem_nextSet, SEM_NEXT_SET, 1); // Receiver must aquire first
-
+    uint64_t startPP = rdtscp64() + START_DELAY;
+    char startPPstr[32];
+    sprintf(startPPstr, "%lu", startPP);
 
     // Fork the second child process to execute ./sender
     sender_pid = fork();
@@ -121,7 +123,7 @@ int main() {
     if (sender_pid == 0) {
         // In the child process for sender
         printf("Starting sender process...\n\n");
-        execl(senderPath, "./sender", NULL);
+        execl(senderPath, "./sender", startPPstr, NULL);
         // If execl returns, there was an error
         perror("Failed to execute ./sender");
         exit(EXIT_FAILURE);
@@ -141,7 +143,7 @@ int main() {
     if (receiver_pid == 0) {
         // In the child process for receiver
         printf("Starting receiver process...\n");
-        execl(receiverPath, "./receiver", NULL);
+        execl(receiverPath, "./receiver",startPPstr , NULL);
         // If execl returns, there was an error
         perror("Failed to execute ./receiver");
         exit(EXIT_FAILURE);
@@ -170,29 +172,8 @@ int main() {
     // Cleanup semaphores
     sem_unlink(SEM_TURN_RECEIVER);
     sem_unlink(SEM_TURN_SENDER);
+    sem_unlink(SEM_MAPPING);
 
-
-    LogData sender_data[MESSAGE_SIZE];
-    LogData receiver_data[MESSAGE_SIZE];
-
-    parse_log_file(SENDER_LOG, sender_data);
-    parse_log_file(RECEIVER_LOG, receiver_data);
-
-    // Print the times and the distance between the starts
-    // for (int i = 0; i < MESSAGE_SIZE; i++) {
-    //     printf("----------------ROUND %d----------------\n", i+1);
-    //     printf("Sender start: %lu\nSender end: %lu\nSender took: %lu\n\n", sender_data[i].start, sender_data[i].end, sender_data[i].took);
-    //     printf("Receiver start: %lu\nReceiver end: %lu\nReceiver took: %lu\n\n", receiver_data[i].start, receiver_data[i].end, receiver_data[i].took);
-    //     printf("----Distances (sender - receiver)----\nDistance between starts: %ld \n", sender_data[i].start - receiver_data[i].start);
-    //     printf("Distance between ends: %ld \n", sender_data[i].end- receiver_data[i].end);
-    //     printf("Took distance: %ld \n", sender_data[i].took- receiver_data[i].took);
-    //     printf("(SenderEnd - ReceiverStart): %ld \n", sender_data[i].end - receiver_data[i].start);
-    //     if (i > 0) {
-    //         printf("(ReceiverEndPrev - SenderStartCurr): %ld \n", receiver_data[i-1].end - sender_data[i].start);
-    //     }
-    //
-    //
-    // }
 
     return 0;
 }

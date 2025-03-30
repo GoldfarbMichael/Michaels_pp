@@ -82,7 +82,7 @@ void monitor_all_sets(l3pp_t* l3) {
     }
 }
 
-void prime_monitored_sets(l3pp_t* l3, uint8_t bit) {
+void prime_monitored_sets(l3pp_t* l3, uint16_t bit) {
     int nmonitored = l3_getSets(*l3);
 
     uint16_t* res = (uint16_t*) calloc(nmonitored, sizeof(uint16_t));
@@ -92,7 +92,7 @@ void prime_monitored_sets(l3pp_t* l3, uint8_t bit) {
     free(res);
 }
 
-void steam_message_to_file(const uint8_t *message, FILE *file) {
+void steam_message_to_file(const uint16_t *message, FILE *file) {
 
     // Write bits to the file
     for (int i = 0; i < MESSAGE_SIZE; i++) {
@@ -127,7 +127,7 @@ uint64_t get_time_to_traverse(void *head) {
  *         done NUM_OF_MESSAGE_SENDS times
  *         every round happens after a slot time (of cycles)
  */
-void correlated_prime(void* head, const uint8_t bit, int slot, uint64_t traverseTime) {
+void correlated_prime(void* head, const uint16_t bit, int slot, uint64_t traverseTime) {
     if (bit == 1) {
         traverse_monitored_addresses(head);
     }
@@ -137,7 +137,7 @@ void correlated_prime(void* head, const uint8_t bit, int slot, uint64_t traverse
 }
 
 
-void create_message(uint8_t *message) {
+void create_message(uint16_t *message) {
     size_t len = strlen(MESSAGE_STR);  // 128 characters
     printf("STR LEN: %ld\n", len);
     // Convert each character to its 8-bit binary representation
@@ -165,7 +165,7 @@ void create_message(uint8_t *message) {
     // }
 }
 
-void prepare_sender(l3pp_t* l3, uint8_t* message) {
+void prepare_sender(l3pp_t* l3, uint16_t* message) {
     int numOfSets = 0;
     l3info_t l3i = (l3info_t)malloc(sizeof(struct l3info));
     // cache mapping for the receiver

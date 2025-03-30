@@ -15,6 +15,18 @@ void log_time(const char *filename, const char *event, uint64_t time) {
     fclose(file);
 }
 
+void log_start_time(const char *filename, uint64_t time) {
+    FILE *file = fopen(filename, "a");
+    if (!file) {
+        perror("Failed to open log file");
+        return;
+    }
+    fprintf(file, "%lu,", time);
+    fclose(file);
+}
+
+
+
 void print_string_from_bits(const uint16_t *bit_array) {
     if (MESSAGE_SIZE % 8 != 0) {
         fprintf(stderr, "Error: bit length must be a multiple of 8.\n");
@@ -44,3 +56,16 @@ void set_cpu_range(int start_cpu, int end_cpu) {
         perror("sched_setaffinity");
     }
 }
+
+void print_core(){
+    int core = sched_getcpu();
+    if (core != -1) {
+        printf("Running on core: %d\n", core);
+    } else {
+        perror("sched_getcpu");
+    }
+}
+
+
+
+
